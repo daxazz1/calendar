@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2026 Cloud Tracker (Lithuania Edition)</title>
+    <title>2026 Habit Tracker (Lithuania Edition)</title>
     <style>
-        :root { --primary: #2563eb; --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0; }
+        :root { --primary: #2563eb; --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0; --today: #f59e0b; }
         body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); padding: 20px; max-width: 1200px; margin: 0 auto; }
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
         .status-badge { font-size: 0.8rem; padding: 6px 12px; border-radius: 20px; background: #fee2e2; color: #991b1b; font-weight: 500; }
@@ -17,21 +17,23 @@
         .delete-btn { background: #ef4444; padding: 5px 10px; font-size: 0.8rem; margin-left: 10px; }
         
         .months-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-        .month { border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: white; }
+        .month { border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: white; position: relative; }
         .month-name { text-align: center; font-weight: bold; margin-bottom: 12px; color: #1e293b; }
         
         .weekday-headers { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 5px; text-align: center; font-size: 0.7rem; font-weight: bold; color: #94a3b8; }
         .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
         
-        .day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; cursor: pointer; border-radius: 4px; user-select: none; }
+        .day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; cursor: pointer; border-radius: 4px; user-select: none; border: 2px solid transparent; }
         .day:hover { background-color: #f1f5f9; }
         
-        /* Weekend Highlighting */
+        /* Weekend Style */
         .day.weekend { background-color: #fff1f2; color: #e11d48; }
-        .day.weekend:hover { background-color: #ffe4e6; }
         
-        /* Marked "X" Style */
-        .day.marked { background-color: var(--primary) !important; color: white !important; font-weight: bold; }
+        /* Today Style - Gold Border */
+        .day.is-today { border-color: var(--today); font-weight: 800; color: var(--today); box-shadow: inset 0 0 5px rgba(245, 158, 11, 0.2); }
+        
+        /* Marked Style */
+        .day.marked { background-color: var(--primary) !important; color: white !important; font-weight: bold; border-color: transparent; }
         .day.empty { cursor: default; background: transparent !important; }
     </style>
 </head>
@@ -51,6 +53,12 @@
         const DB_URL = "https://calendar-3ce3a-default-rtdb.europe-west1.firebasedatabase.app/calendars.json";
         const app = document.getElementById('app');
         const syncStatus = document.getElementById('sync-status');
+        
+        const now = new Date();
+        const CURRENT_DAY = now.getDate();
+        const CURRENT_MONTH = now.getMonth();
+        const CURRENT_YEAR = now.getFullYear();
+
         const YEAR = 2026;
         const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
         const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -139,7 +147,6 @@
                     const headGrid = document.createElement('div');
                     headGrid.className = 'weekday-headers';
                     WEEKDAYS.forEach((day, idx) => {
-                        // Apply red color to S S headers
                         const color = idx >= 5 ? 'color:#e11d48' : '';
                         headGrid.innerHTML += `<div style="${color}">${day}</div>`;
                     });
@@ -158,13 +165,12 @@
 
                     for (let d = 1; d <= daysInMonth; d++) {
                         const isMarked = marks.includes(`${m}-${d}`);
-                        const dayEl = document.createElement('div');
-                        
-                        // Calculate if this day falls on Saturday (5) or Sunday (6) in our Monday-start grid
                         const dayOfWeek = (emptySlots + d - 1) % 7;
                         const isWeekend = dayOfWeek >= 5;
+                        const isToday = (d === CURRENT_DAY && m === CURRENT_MONTH && YEAR === CURRENT_YEAR);
 
-                        dayEl.className = `day ${isMarked ? 'marked' : ''} ${isWeekend ? 'weekend' : ''}`;
+                        const dayEl = document.createElement('div');
+                        dayEl.className = `day ${isMarked ? 'marked' : ''} ${isWeekend ? 'weekend' : ''} ${isToday ? 'is-today' : ''}`;
                         dayEl.innerText = isMarked ? 'X' : d;
                         dayEl.onclick = () => toggleDay(cal.id, m, d);
                         dGrid.appendChild(dayEl);
