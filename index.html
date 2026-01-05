@@ -2,44 +2,35 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2026 Cloud Tracker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2026 Personal Tracker</title>
     <style>
-        :root { --primary: #2563eb; --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0; --today: #f59e0b; }
-        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); padding: 20px; max-width: 1300px; margin: 0 auto; }
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        .status-badge { font-size: 0.8rem; padding: 6px 12px; border-radius: 20px; background: #dcfce7; color: #166534; font-weight: 500; }
-        button { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        
-        .calendar-wrapper { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 30px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-        .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid var(--border); padding-bottom: 10px; }
-        .delete-btn { background: #ef4444; padding: 5px 10px; font-size: 0.8rem; margin-left: 10px; }
-        
-        .months-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        :root { --primary: #2563eb; --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0; --text: #1e293b; --today: #f59e0b; --weekend-bg: #fff1f2; --weekend-text: #e11d48; }
+        body { -webkit-tap-highlight-color: transparent; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; touch-action: manipulation; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+        .status { font-size: 0.7rem; color: #166534; background: #dcfce7; padding: 4px 8px; border-radius: 10px; }
+        button { cursor: pointer; background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; -webkit-appearance: none; }
+        .calendar-wrapper { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .months-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
         .month { border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: white; }
-        .month-name { text-align: center; font-weight: bold; margin-bottom: 12px; color: #1e293b; }
-        
+        .month-name { text-align: center; font-weight: bold; margin-bottom: 10px; }
         .weekday-headers, .days-grid { display: grid; grid-template-columns: 30px repeat(7, 1fr); gap: 2px; }
-        .weekday-headers { margin-bottom: 5px; text-align: center; font-size: 0.7rem; font-weight: bold; color: #94a3b8; }
-        .week-num-label { color: #cbd5e1; font-size: 0.6rem; display: flex; align-items: center; justify-content: center; }
-
-        .day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; cursor: pointer; border-radius: 4px; user-select: none; border: 2px solid transparent; }
-        .day:hover:not(.empty):not(.week-num) { background-color: #f1f5f9; }
-        
-        .day.week-num { cursor: default; font-size: 0.65rem; color: #94a3b8; background: #f8fafc; font-weight: bold; border-right: 1px solid var(--border); border-radius: 0; }
-        .day.weekend { background-color: #fff1f2; color: #e11d48; }
-        .day.is-today { border-color: var(--today); font-weight: 800; color: var(--today); }
-        .day.marked { background-color: var(--primary) !important; color: white !important; font-weight: bold; border-color: transparent; }
-        .day.empty { cursor: default; background: transparent !important; }
+        .weekday-headers { font-size: 0.6rem; color: #64748b; font-weight: bold; text-align: center; margin-bottom: 5px; }
+        .day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; border-radius: 4px; cursor: pointer; border: 2px solid transparent; user-select: none; -webkit-user-select: none; }
+        .day.week-num { cursor: default; background: #f1f5f9; color: #94a3b8; font-size: 0.6rem; border-right: 1px solid var(--border); }
+        .day.weekend { background: var(--weekend-bg); color: var(--weekend-text); }
+        .day.is-today { border-color: var(--today); color: var(--today); font-weight: bold; }
+        .day.marked { background: var(--primary) !important; color: white !important; font-weight: bold; }
+        .day.empty { pointer-events: none; opacity: 0; }
     </style>
 </head>
-<body>
+<body onclick="">
 
     <header>
-        <h1>2026 Personal Tracker</h1>
-        <div>
-            <span id="sync-status" class="status-badge">Cloud Synced</span>
-            <button id="add-cal-btn">+ New Calendar</button>
+        <h3 style="margin:0">2026 Personal Tracker</h3>
+        <div style="display:flex; align-items:center; gap:10px">
+            <span id="sync-status" class="status">Loading...</span>
+            <button id="addBtn">+ New Calendar</button>
         </div>
     </header>
 
@@ -47,146 +38,159 @@
 
     <script>
         const DB_URL = "https://calendar-3ce3a-default-rtdb.europe-west1.firebasedatabase.app/calendars.json";
-        const app = document.getElementById('app');
-        const syncStatus = document.getElementById('sync-status');
-        
-        const now = new Date();
-        const CURRENT_DAY = now.getDate();
-        const CURRENT_MONTH = now.getMonth();
-        const CURRENT_YEAR = now.getFullYear();
-
-        const YEAR = 2026;
-        const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-        const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-
         let calendars = [];
 
-        function getWeekNumber(d) {
-            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-            var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-        }
-
+        // 1. DATABASE LOADING
         async function loadData() {
             try {
-                const response = await fetch(DB_URL);
-                const data = await response.json();
-                calendars = data ? (Array.isArray(data) ? data : Object.values(data)) : [];
-                renderApp();
-            } catch (err) { syncStatus.innerText = "Sync Error"; }
-        }
-
-        async function saveData() {
-            try {
-                await fetch(DB_URL, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(calendars) });
-                syncStatus.innerText = "Cloud Synced";
-            } catch (err) { syncStatus.innerText = "Save Failed"; }
-        }
-
-        function toggleDay(calId, mIdx, d) {
-            const cal = calendars.find(c => c.id === calId);
-            const key = `${mIdx}-${d}`;
-            if (!cal.marks) cal.marks = [];
-            cal.marks.includes(key) ? cal.marks = cal.marks.filter(m => m !== key) : cal.marks.push(key);
-            renderApp(); 
-            saveData();
-        }
-
-        function deleteCalendar(id) {
-            if(confirm("Delete this calendar forever?")) { 
-                calendars = calendars.filter(c => c.id !== id); 
-                renderApp(); 
-                saveData(); 
+                console.log("Fetching data...");
+                const r = await fetch(DB_URL);
+                const data = await r.json();
+                
+                if (!data) {
+                    calendars = [];
+                } else if (Array.isArray(data)) {
+                    calendars = data.filter(i => i !== null);
+                } else {
+                    calendars = Object.values(data);
+                }
+                
+                console.log("Data loaded:", calendars);
+                document.getElementById('sync-status').innerText = "Synced";
+                render();
+            } catch (e) {
+                console.error("Load error:", e);
+                document.getElementById('sync-status').innerText = "Load Error";
             }
         }
 
-        function renderApp() {
+        // 2. DATABASE SAVING
+        async function saveData() {
+            document.getElementById('sync-status').innerText = "Saving...";
+            try {
+                await fetch(DB_URL, { 
+                    method: 'PUT', 
+                    body: JSON.stringify(calendars) 
+                });
+                document.getElementById('sync-status').innerText = "Synced";
+            } catch (e) {
+                console.error("Save error:", e);
+                document.getElementById('sync-status').innerText = "Save Failed";
+            }
+        }
+
+        // 3. TOGGLE FUNCTION
+        window.toggleDay = function(calId, m, d) {
+            console.log("Click detected for:", calId, m, d);
+            const cal = calendars.find(c => c.id === calId);
+            if (!cal) return;
+
+            if (!cal.marks) cal.marks = [];
+            const key = m + "-" + d;
+            
+            if (cal.marks.includes(key)) {
+                cal.marks = cal.marks.filter(x => x !== key);
+            } else {
+                cal.marks.push(key);
+            }
+            
+            render();
+            saveData();
+        };
+
+        // 4. NEW CALENDAR
+        document.getElementById('addBtn').onclick = function() {
+            const name = prompt("Calendar Name:");
+            if (name) {
+                const newCal = { id: Date.now(), name: name, marks: [] };
+                calendars.push(newCal);
+                render();
+                saveData();
+            }
+        };
+
+        // 5. DELETE CALENDAR
+        window.deleteCal = function(id) {
+            if(confirm("Delete this calendar?")) {
+                calendars = calendars.filter(c => c.id !== id);
+                render();
+                saveData();
+            }
+        };
+
+        // 6. WEEK NUMBER LOGIC
+        function getWk(date) {
+            let t = new Date(date.getTime()); 
+            t.setHours(0,0,0,0);
+            t.setDate(t.getDate() + 3 - (t.getDay() + 6) % 7);
+            let w1 = new Date(t.getFullYear(), 0, 4);
+            return 1 + Math.round(((t - w1)/86400000 - 3 + (w1.getDay() + 6)%7)/7);
+        }
+
+        // 7. RENDER ENGINE
+        function render() {
+            const app = document.getElementById('app');
             app.innerHTML = '';
+            
             if (calendars.length === 0) {
-                app.innerHTML = '<p style="text-align:center; color:#64748b; margin-top: 50px;">No calendars found. Click + New Calendar to start!</p>';
+                app.innerHTML = '<p style="text-align:center; padding:50px; color:#94a3b8;">No calendars yet. Click + New Calendar.</p>';
                 return;
             }
 
             calendars.forEach(cal => {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'calendar-wrapper';
-                const marks = cal.marks || [];
-
-                wrapper.innerHTML = `<div class="cal-header">
-                    <div><span class="cal-title"><strong>${cal.name || "Untitled Calendar"}</strong></span>
-                    <button class="delete-btn" onclick="deleteCalendar(${cal.id})">Delete</button></div>
-                    <span>Total X: <strong>${marks.length}</strong></span></div>`;
-
-                const monthsGrid = document.createElement('div');
-                monthsGrid.className = 'months-grid';
+                const wrap = document.createElement('div');
+                wrap.className = 'calendar-wrapper';
+                
+                let html = `
+                    <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px solid #e2e8f0; padding-bottom:10px">
+                        <strong>${cal.name}</strong>
+                        <button onclick="deleteCal(${cal.id})" style="background:#ef4444; padding:4px 8px; font-size:0.7rem">Delete</button>
+                    </div>
+                    <div class="months-grid">`;
 
                 for (let m = 0; m < 12; m++) {
-                    const mDiv = document.createElement('div');
-                    mDiv.className = 'month';
-                    mDiv.innerHTML = `<div class="month-name">${MONTHS[m]}</div>`;
+                    html += `
+                        <div class="month">
+                            <div class="month-name">${['January','February','March','April','May','June','July','August','September','October','November','December'][m]}</div>
+                            <div class="weekday-headers"><div>Wk</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div style="color:red">S</div><div style="color:red">S</div></div>
+                            <div class="days-grid">`;
                     
-                    const headGrid = document.createElement('div');
-                    headGrid.className = 'weekday-headers';
-                    headGrid.innerHTML = `<div class="week-num-label">Wk</div>`;
-                    WEEKDAYS.forEach((day, idx) => {
-                        const color = idx >= 5 ? 'color:#e11d48' : '';
-                        headGrid.innerHTML += `<div style="${color}">${day}</div>`;
-                    });
-                    mDiv.appendChild(headGrid);
-
-                    const dGrid = document.createElement('div');
-                    dGrid.className = 'days-grid';
-
-                    const daysInMonth = new Date(YEAR, m + 1, 0).getDate();
-                    let firstDay = new Date(YEAR, m, 1).getDay(); 
-                    let emptySlots = firstDay === 0 ? 6 : firstDay - 1;
-
-                    let dayCounter = 1;
-                    for (let row = 0; row < 6; row++) {
-                        if (dayCounter > daysInMonth && row > 0) break;
-
-                        let dateForWeek = new Date(YEAR, m, dayCounter > daysInMonth ? daysInMonth : (dayCounter <= 0 ? 1 : dayCounter));
-                        if (row === 0 && emptySlots > 0) dateForWeek = new Date(YEAR, m, 1);
+                    const first = new Date(2026, m, 1);
+                    const last = new Date(2026, m + 1, 0).getDate();
+                    let startIdx = first.getDay() === 0 ? 6 : first.getDay() - 1;
+                    
+                    let day = 1;
+                    for (let r = 0; r < 6; r++) {
+                        if (day > last) break;
                         
-                        const wkNum = getWeekNumber(dateForWeek);
-                        dGrid.innerHTML += `<div class="day week-num">${wkNum}</div>`;
-
-                        for (let col = 0; col < 7; col++) {
-                            const totalIdx = row * 7 + col;
-                            if (totalIdx < emptySlots || dayCounter > daysInMonth) {
-                                dGrid.innerHTML += `<div class="day empty"></div>`;
+                        // Add Week Num
+                        html += `<div class="day week-num">${getWk(new Date(2026, m, day))}</div>`;
+                        
+                        for (let c = 0; c < 7; c++) {
+                            const pos = r * 7 + c;
+                            if (pos < startIdx || day > last) {
+                                html += `<div class="day empty"></div>`;
                             } else {
-                                const d = dayCounter;
-                                const isMarked = marks.includes(`${m}-${d}`);
-                                const isWeekend = col >= 5;
-                                const isToday = (d === CURRENT_DAY && m === CURRENT_MONTH && YEAR === CURRENT_YEAR);
+                                const currentDay = day;
+                                const isX = cal.marks && cal.marks.includes(m + "-" + currentDay);
+                                const isToday = (currentDay === new Date().getDate() && m === new Date().getMonth() && new Date().getFullYear() === 2026);
                                 
-                                const dayEl = document.createElement('div');
-                                dayEl.className = `day ${isMarked ? 'marked' : ''} ${isWeekend ? 'weekend' : ''} ${isToday ? 'is-today' : ''}`;
-                                dayEl.innerText = isMarked ? 'X' : d;
-                                dayEl.onclick = () => toggleDay(cal.id, m, d);
-                                dGrid.appendChild(dayEl);
-                                dayCounter++;
+                                html += `<div 
+                                    class="day ${isX ? 'marked' : ''} ${c >= 5 ? 'weekend' : ''} ${isToday ? 'is-today' : ''}" 
+                                    onclick="toggleDay(${cal.id}, ${m}, ${currentDay})">
+                                    ${isX ? 'X' : currentDay}
+                                </div>`;
+                                day++;
                             }
                         }
                     }
-                    mDiv.appendChild(dGrid);
-                    monthsGrid.appendChild(mDiv);
+                    html += `</div></div>`;
                 }
-                wrapper.appendChild(monthsGrid);
-                app.appendChild(wrapper);
+                html += `</div>`;
+                wrap.innerHTML = html;
+                app.appendChild(wrap);
             });
         }
-
-        document.getElementById('add-cal-btn').onclick = () => {
-            const name = prompt("Enter Name for your New Calendar:");
-            if (name) { 
-                calendars.push({ id: Date.now(), name: name, marks: [] }); 
-                renderApp(); 
-                saveData(); 
-            }
-        };
 
         loadData();
     </script>
