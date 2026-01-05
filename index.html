@@ -3,95 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2026 Habit Tracker (Firebase Cloud)</title>
+    <title>2026 Cloud Tracker</title>
     <style>
-        :root {
-            --primary: #2563eb;
-            --bg: #f8fafc;
-            --surface: #ffffff;
-            --border: #e2e8f0;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--bg);
-            color: #1e293b;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-
-        .status-badge {
-            font-size: 0.8rem;
-            padding: 4px 10px;
-            border-radius: 20px;
-            background: #dcfce7;
-            color: #166534;
-            margin-right: 10px;
-        }
-
-        button {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .calendar-wrapper {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        .cal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            border-bottom: 2px solid var(--border);
-            padding-bottom: 10px;
-        }
-
-        .delete-btn {
-            background: #ef4444;
-            padding: 5px 10px;
-            font-size: 0.8rem;
-            margin-left: 10px;
-        }
-
-        .months-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 20px;
-        }
-
+        :root { --primary: #2563eb; --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); padding: 20px; max-width: 1200px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .status-badge { font-size: 0.8rem; padding: 4px 10px; border-radius: 20px; background: #dcfce7; color: #166534; }
+        button { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .calendar-wrapper { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 30px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid var(--border); padding-bottom: 10px; }
+        .delete-btn { background: #ef4444; padding: 5px 10px; font-size: 0.8rem; margin-left: 10px; }
+        .months-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
         .month { border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
         .month-name { text-align: center; font-weight: bold; margin-bottom: 8px; color: #64748b; }
-        
         .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-        .day {
-            aspect-ratio: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8rem;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-
+        .day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; cursor: pointer; border-radius: 4px; border: 1px solid transparent; }
         .day:hover { background-color: #f1f5f9; }
         .day.marked { background-color: var(--primary); color: white; font-weight: bold; }
         .day.empty { cursor: default; }
@@ -100,21 +26,17 @@
 <body>
 
     <header>
-        <h1>2026 Cloud Tracker</h1>
+        <h1>2026 Habit Tracker</h1>
         <div>
-            <span id="sync-status" class="status-badge">Connecting Firebase...</span>
-            <button id="add-cal-btn">+ New Calendar</button>
+            <span id="sync-status" class="status-badge">Connecting...</span>
+            <button id="add-cal-btn">+ New Habit</button>
         </div>
     </header>
 
     <div id="app"></div>
 
     <script>
-        /**
-         * 1. Go to Firebase Console -> Realtime Database.
-         * 2. Copy your Database URL. 
-         * 3. Paste it below (ensure it ends with /calendars.json)
-         */
+        // REPLACE this with your actual Firebase URL ending in /calendars.json
         const DB_URL = "https://calendar-3ce3a-default-rtdb.europe-west1.firebasedatabase.app/";
 
         const app = document.getElementById('app');
@@ -124,32 +46,36 @@
 
         let calendars = [];
 
-        // LOAD DATA
         async function loadData() {
-            syncStatus.innerText = "Fetching...";
+            syncStatus.innerText = "Syncing...";
             try {
                 const response = await fetch(DB_URL);
                 const data = await response.json();
-                // If database is empty, start with an empty list
-                calendars = data ? Object.values(data) : [];
+                
+                // Fix for the "undefined" issue:
+                // Firebase often returns an object. We convert it to an array.
+                if (data) {
+                    calendars = Array.isArray(data) ? data : Object.values(data);
+                } else {
+                    calendars = [];
+                }
+                
                 renderApp();
                 syncStatus.innerText = "Cloud Synced";
             } catch (err) {
-                syncStatus.innerText = "Connection Error";
+                syncStatus.innerText = "Sync Error";
                 console.error(err);
             }
         }
 
-        // SAVE DATA
         async function saveData() {
             syncStatus.innerText = "Saving...";
             try {
                 await fetch(DB_URL, {
-                    method: 'PUT', // PUT replaces the data with our current state
+                    method: 'PUT',
                     body: JSON.stringify(calendars)
                 });
                 syncStatus.innerText = "Cloud Synced";
-                renderApp();
             } catch (err) {
                 syncStatus.innerText = "Save Failed";
             }
@@ -158,8 +84,6 @@
         function toggleDay(calId, mIdx, d) {
             const cal = calendars.find(c => c.id === calId);
             const key = `${mIdx}-${d}`;
-            
-            // Ensure marks array exists
             if (!cal.marks) cal.marks = [];
 
             if (cal.marks.includes(key)) {
@@ -167,32 +91,37 @@
             } else {
                 cal.marks.push(key);
             }
-            saveData();
+            renderApp(); // Update UI immediately
+            saveData();  // Save to cloud
         }
 
         function deleteCalendar(id) {
-            if(confirm("Delete this habit forever?")) {
+            if(confirm("Delete this habit?")) {
                 calendars = calendars.filter(c => c.id !== id);
+                renderApp();
                 saveData();
             }
         }
 
         function renderApp() {
             app.innerHTML = '';
+            if (calendars.length === 0) {
+                app.innerHTML = '<p style="text-align:center; color:#64748b;">No habits added yet. Click "+ New Habit" to start.</p>';
+                return;
+            }
+
             calendars.forEach(cal => {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'calendar-wrapper';
-                
-                // Set default marks if empty from database
                 const marks = cal.marks || [];
 
                 wrapper.innerHTML = `
                     <div class="cal-header">
                         <div>
-                            <span class="cal-title"><strong>${cal.name}</strong></span>
+                            <span class="cal-title"><strong>${cal.name || "Unnamed Habit"}</strong></span>
                             <button class="delete-btn" onclick="deleteCalendar(${cal.id})">Delete</button>
                         </div>
-                        <span>Total X: <strong>${marks.length}</strong></span>
+                        <span>Total: <strong>${marks.length}</strong></span>
                     </div>
                 `;
 
@@ -229,15 +158,19 @@
         }
 
         document.getElementById('add-cal-btn').onclick = () => {
-            const name = prompt("Enter habit name:");
+            const name = prompt("Habit Name (e.g. Gym, Water, No Sugar):");
             if (name) {
-                // Ensure every new calendar has an empty marks array
-                calendars.push({ id: Date.now(), name: name, marks: [] });
+                const newHabit = { 
+                    id: Date.now(), 
+                    name: name, 
+                    marks: [] 
+                };
+                calendars.push(newHabit);
+                renderApp();
                 saveData();
             }
         };
 
-        // Initial fetch from Firebase
         loadData();
     </script>
 </body>
