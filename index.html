@@ -107,7 +107,7 @@
         }
 
         function deleteCalendar(id) {
-            if(confirm("Delete this habit?")) {
+            if(confirm("Delete calendar?")) {
                 calendars = calendars.filter(c => c.id !== id);
                 renderApp();
                 saveData();
@@ -117,7 +117,7 @@
         function renderApp() {
             app.innerHTML = '';
             if (calendars.length === 0) {
-                app.innerHTML = '<p style="text-align:center; color:#64748b; margin-top: 50px;">No habits yet. Click + New Habit to start!</p>';
+                app.innerHTML = '<p style="text-align:center; color:#64748b; margin-top: 50px;">No calendars yet. Click + to add a new calendar</p>';
                 return;
             }
 
@@ -184,7 +184,7 @@
         }
 
         document.getElementById('add-cal-btn').onclick = () => {
-            const name = prompt("Enter habit name:");
+            const name = prompt("Enter calendar name:");
             if (name) {
                 calendars.push({ id: Date.now(), name: name, marks: [] });
                 renderApp();
