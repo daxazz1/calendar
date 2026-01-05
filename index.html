@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2026 Cloud Tracker</title>
+    <title>2026 Cloud Tracker (Mon-Sun)</title>
     <style>
         :root { --primary: #2563eb; --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0; }
         body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); padding: 20px; max-width: 1200px; margin: 0 auto; }
@@ -11,13 +11,16 @@
         .status-badge { font-size: 0.8rem; padding: 6px 12px; border-radius: 20px; background: #fee2e2; color: #991b1b; font-weight: 500; }
         .status-online { background: #dcfce7; color: #166534; }
         button { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: opacity 0.2s; }
-        button:hover { opacity: 0.9; }
         .calendar-wrapper { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 30px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
         .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid var(--border); padding-bottom: 10px; }
         .delete-btn { background: #ef4444; padding: 5px 10px; font-size: 0.8rem; margin-left: 10px; }
-        .months-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+        .months-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
         .month { border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: white; }
-        .month-name { text-align: center; font-weight: bold; margin-bottom: 8px; color: #64748b; }
+        .month-name { text-align: center; font-weight: bold; margin-bottom: 8px; color: #1e293b; }
+        
+        /* Weekday Labels Styling */
+        .weekday-headers { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 5px; text-align: center; font-size: 0.7rem; font-weight: bold; color: #94a3b8; }
+        
         .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
         .day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; cursor: pointer; border-radius: 4px; user-select: none; }
         .day:hover { background-color: #f1f5f9; }
@@ -38,61 +41,48 @@
     <div id="app"></div>
 
     <script>
-        // FIXED URL: Added .json to the end of your link
         const DB_URL = "https://calendar-3ce3a-default-rtdb.europe-west1.firebasedatabase.app/calendars.json";
-
         const app = document.getElementById('app');
         const syncStatus = document.getElementById('sync-status');
         const YEAR = 2026;
-        const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        // Weekdays starting from Monday
+        const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
         let calendars = [];
 
         async function loadData() {
             try {
                 const response = await fetch(DB_URL);
-                if (!response.ok) throw new Error('Network error');
                 const data = await response.json();
-                
-                // Handle different Firebase data structures
-                if (data) {
-                    calendars = Array.isArray(data) ? data : Object.values(data);
-                } else {
-                    calendars = [];
-                }
-                
+                calendars = data ? (Array.isArray(data) ? data : Object.values(data)) : [];
                 renderApp();
                 syncStatus.innerText = "Cloud Synced";
                 syncStatus.classList.add('status-online');
             } catch (err) {
-                syncStatus.innerText = "Sync Error (Check Rules)";
+                syncStatus.innerText = "Sync Error";
                 syncStatus.classList.remove('status-online');
-                console.error(err);
             }
         }
 
         async function saveData() {
             try {
-                const response = await fetch(DB_URL, {
+                await fetch(DB_URL, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(calendars)
                 });
-                if (!response.ok) throw new Error('Save failed');
                 syncStatus.innerText = "Cloud Synced";
                 syncStatus.classList.add('status-online');
             } catch (err) {
                 syncStatus.innerText = "Save Failed";
-                syncStatus.classList.remove('status-online');
             }
         }
 
         function toggleDay(calId, mIdx, d) {
             const cal = calendars.find(c => c.id === calId);
-            if (!cal) return;
             const key = `${mIdx}-${d}`;
             if (!cal.marks) cal.marks = [];
-
             if (cal.marks.includes(key)) {
                 cal.marks = cal.marks.filter(m => m !== key);
             } else {
@@ -103,7 +93,7 @@
         }
 
         function deleteCalendar(id) {
-            if(confirm("Delete this habit forever?")) {
+            if(confirm("Delete this habit?")) {
                 calendars = calendars.filter(c => c.id !== id);
                 renderApp();
                 saveData();
@@ -113,7 +103,7 @@
         function renderApp() {
             app.innerHTML = '';
             if (calendars.length === 0) {
-                app.innerHTML = '<p style="text-align:center; color:#64748b; margin-top: 50px;">No habits yet. Click the button above to start!</p>';
+                app.innerHTML = '<p style="text-align:center; color:#64748b; margin-top: 50px;">No habits yet. Click + New Habit to start!</p>';
                 return;
             }
 
@@ -138,15 +128,30 @@
                 for (let m = 0; m < 12; m++) {
                     const mDiv = document.createElement('div');
                     mDiv.className = 'month';
+                    
+                    // Month Name
                     mDiv.innerHTML = `<div class="month-name">${MONTHS[m]}</div>`;
                     
+                    // Weekday Headers (M T W T F S S)
+                    const headGrid = document.createElement('div');
+                    headGrid.className = 'weekday-headers';
+                    WEEKDAYS.forEach(day => headGrid.innerHTML += `<div>${day}</div>`);
+                    mDiv.appendChild(headGrid);
+
                     const dGrid = document.createElement('div');
                     dGrid.className = 'days-grid';
 
                     const daysInMonth = new Date(YEAR, m + 1, 0).getDate();
-                    const firstDay = new Date(YEAR, m, 1).getDay();
+                    
+                    // Monday Start Logic:
+                    // getDay() returns 0 for Sunday, 1 for Monday.
+                    // We want: 0 for Monday, 6 for Sunday.
+                    let firstDay = new Date(YEAR, m, 1).getDay(); 
+                    let emptySlots = firstDay === 0 ? 6 : firstDay - 1;
 
-                    for (let e = 0; e < firstDay; e++) dGrid.innerHTML += `<div class="day empty"></div>`;
+                    for (let e = 0; e < emptySlots; e++) {
+                        dGrid.innerHTML += `<div class="day empty"></div>`;
+                    }
 
                     for (let d = 1; d <= daysInMonth; d++) {
                         const isMarked = marks.includes(`${m}-${d}`);
@@ -167,8 +172,7 @@
         document.getElementById('add-cal-btn').onclick = () => {
             const name = prompt("Enter habit name:");
             if (name) {
-                const newHabit = { id: Date.now(), name: name, marks: [] };
-                calendars.push(newHabit);
+                calendars.push({ id: Date.now(), name: name, marks: [] });
                 renderApp();
                 saveData();
             }
