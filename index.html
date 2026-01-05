@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Personal Calendar 2026</title>
+    <title>test</title>
     <style>
         :root { --primary: #2563eb; --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0; --today: #f59e0b; }
         body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); padding: 20px; max-width: 1300px; margin: 0 auto; }
@@ -19,14 +19,18 @@
         .month { border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: white; }
         .month-name { text-align: center; font-weight: bold; margin-bottom: 12px; color: #1e293b; }
         
+        /* Grid adjusted for 8 columns (Week # + 7 Days) */
         .weekday-headers, .days-grid { display: grid; grid-template-columns: 30px repeat(7, 1fr); gap: 2px; }
+        
         .weekday-headers { margin-bottom: 5px; text-align: center; font-size: 0.7rem; font-weight: bold; color: #94a3b8; }
         .week-num-label { color: #cbd5e1; font-size: 0.6rem; display: flex; align-items: center; justify-content: center; }
 
         .day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; cursor: pointer; border-radius: 4px; user-select: none; border: 2px solid transparent; }
         .day:hover:not(.empty):not(.week-num) { background-color: #f1f5f9; }
         
-        .day.week-num { cursor: default; font-size: 0.65rem; color: #94a3b8; background: #f8fafc; font-weight: bold; border-right: 1px solid var(--border); border-radius: 0; }
+        /* Week Number Column Style */
+        .day.week-num { cursor: default; font-size: 0.65rem; color: #94a3b8; background: #f8fafc; font-weight: bold; border-radius: 0; border-right: 1px solid var(--border); }
+        
         .day.weekend { background-color: #fff1f2; color: #e11d48; }
         .day.is-today { border-color: var(--today); font-weight: 800; color: var(--today); }
         .day.marked { background-color: var(--primary) !important; color: white !important; font-weight: bold; border-color: transparent; }
@@ -36,10 +40,10 @@
 <body>
 
     <header>
-        <h1>Personal Calendar 2026</h1>
+        <h1>test</h1>
         <div>
             <span id="sync-status" class="status-badge">Cloud Synced</span>
-            <button id="add-cal-btn">+ New Calendar</button>
+            <button id="add-cal-btn">+ New Habit</button>
         </div>
     </header>
 
@@ -61,6 +65,7 @@
 
         let calendars = [];
 
+        // Helper to get ISO Week Number
         function getWeekNumber(d) {
             d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
             d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
@@ -94,17 +99,13 @@
         }
 
         function deleteCalendar(id) {
-            if(confirm("Delete this calendar forever?")) { 
-                calendars = calendars.filter(c => c.id !== id); 
-                renderApp(); 
-                saveData(); 
-            }
+            if(confirm("Delete habit?")) { calendars = calendars.filter(c => c.id !== id); renderApp(); saveData(); }
         }
 
         function renderApp() {
             app.innerHTML = '';
             if (calendars.length === 0) {
-                app.innerHTML = '<p style="text-align:center; color:#64748b; margin-top: 50px;">No calendars found. Click + New Calendar to start!</p>';
+                app.innerHTML = '<p style="text-align:center; color:#64748b; margin-top: 50px;">Click + New Habit to start!</p>';
                 return;
             }
 
@@ -114,9 +115,9 @@
                 const marks = cal.marks || [];
 
                 wrapper.innerHTML = `<div class="cal-header">
-                    <div><span class="cal-title"><strong>${cal.name || "Untitled Calendar"}</strong></span>
+                    <div><span class="cal-title"><strong>${cal.name || "Untitled"}</strong></span>
                     <button class="delete-btn" onclick="deleteCalendar(${cal.id})">Delete</button></div>
-                    <span>Total X: <strong>${marks.length}</strong></span></div>`;
+                    <span>Total: <strong>${marks.length}</strong></span></div>`;
 
                 const monthsGrid = document.createElement('div');
                 monthsGrid.className = 'months-grid';
@@ -142,16 +143,19 @@
                     let firstDay = new Date(YEAR, m, 1).getDay(); 
                     let emptySlots = firstDay === 0 ? 6 : firstDay - 1;
 
+                    // Rendering rows
                     let dayCounter = 1;
                     for (let row = 0; row < 6; row++) {
                         if (dayCounter > daysInMonth && row > 0) break;
 
+                        // 1. Add Week Number for this row
                         let dateForWeek = new Date(YEAR, m, dayCounter > daysInMonth ? daysInMonth : (dayCounter <= 0 ? 1 : dayCounter));
                         if (row === 0 && emptySlots > 0) dateForWeek = new Date(YEAR, m, 1);
                         
                         const wkNum = getWeekNumber(dateForWeek);
                         dGrid.innerHTML += `<div class="day week-num">${wkNum}</div>`;
 
+                        // 2. Add 7 days for the week
                         for (let col = 0; col < 7; col++) {
                             const totalIdx = row * 7 + col;
                             if (totalIdx < emptySlots || dayCounter > daysInMonth) {
@@ -180,12 +184,8 @@
         }
 
         document.getElementById('add-cal-btn').onclick = () => {
-            const name = prompt("Enter Name for your New Calendar:");
-            if (name) { 
-                calendars.push({ id: Date.now(), name: name, marks: [] }); 
-                renderApp(); 
-                saveData(); 
-            }
+            const name = prompt("Habit name:");
+            if (name) { calendars.push({ id: Date.now(), name, marks: [] }); renderApp(); saveData(); }
         };
 
         loadData();
