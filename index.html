@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 Habit Tracker</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: #1e293b;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        h1 { margin: 0; font-size: 1.5rem; }
+
+        button#add-cal-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        button#add-cal-btn:hover { opacity: 0.9; }
+
+        /* Calendar Container Style */
+        .calendar-wrapper {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .cal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 10px;
+        }
+
+        .cal-title { font-size: 1.25rem; font-weight: bold; }
+        .counter { font-size: 1rem; color: var(--primary); font-weight: bold; }
+        
+        .delete-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 0.8rem;
+        }
+
+        /* Grid Layout */
+        .months-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .month {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .month-name {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #64748b;
+        }
+
+        .days-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+        }
+
+        .day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.1s;
+            user-select: none;
+        }
+
+        .day:hover { background-color: #f1f5f9; }
+        .day.empty { cursor: default; }
+        
+        /* The "X" Marking style */
+        .day.marked {
+            background-color: #dbeafe;
+            color: var(--primary);
+            font-weight: bold;
+            position: relative;
+        }
+        
+        .day.marked::after {
+            content: "X";
+            position: absolute;
+            font-size: 1rem;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>2026 Tracker</h1>
+        <button id="add-cal-btn">+ New Calendar</button>
+    </header>
+
+    <div id="app"></div>
+
+    <script>
+        const app = document.getElementById('app');
+        const YEAR = 2026;
+        const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        // Load data from LocalStorage or start empty
+        let calendars = JSON.parse(localStorage.getItem('myCalendars_2026')) || [];
+
+        function saveData() {
+            localStorage.setItem('myCalendars_2026', JSON.stringify(calendars));
+            renderApp();
+        }
+
+        function createCalendar(name) {
+            const newCal = {
+                id: Date.now(),
+                name: name,
+                marks: [] // Stores strings like "0-15" (Month 0, Day 15)
+            };
+            calendars.push(newCal);
+            saveData();
+        }
+
+        function toggleDay(calId, monthIndex, day) {
+            const cal = calendars.find(c => c.id === calId);
+            const dateKey = `${monthIndex}-${day}`;
+            
+            if (cal.marks.includes(dateKey)) {
+                cal.marks = cal.marks.filter(m => m !== dateKey);
+            } else {
+                cal.marks.push(dateKey);
+            }
+            saveData();
+        }
+
+        function deleteCalendar(calId) {
+            if(confirm("Delete this calendar?")) {
+                calendars = calendars.filter(c => c.id !== calId);
+                saveData();
+            }
+        }
+
+        function renderApp() {
+            app.innerHTML = '';
+            
+            calendars.forEach(cal => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'calendar-wrapper';
+
+                // Header
+                const header = document.createElement('div');
+                header.className = 'cal-header';
+                header.innerHTML = `
+                    <div>
+                        <span class="cal-title">${cal.name}</span>
+                        <button class="delete-btn" onclick="deleteCalendar(${cal.id})">Delete</button>
+                    </div>
+                    <span class="counter">Total X: ${cal.marks.length}</span>
+                `;
+                wrapper.appendChild(header);
+
+                // Months Container
+                const monthsGrid = document.createElement('div');
+                monthsGrid.className = 'months-grid';
+
+                // Generate 12 Months
+                for (let m = 0; m < 12; m++) {
+                    const monthDiv = document.createElement('div');
+                    monthDiv.className = 'month';
+                    
+                    const mTitle = document.createElement('div');
+                    mTitle.className = 'month-name';
+                    mTitle.innerText = MONTHS[m];
+                    monthDiv.appendChild(mTitle);
+
+                    const daysGrid = document.createElement('div');
+                    daysGrid.className = 'days-grid';
+
+                    // Calculate days in month
+                    const daysInMonth = new Date(YEAR, m + 1, 0).getDate();
+                    const firstDayIndex = new Date(YEAR, m, 1).getDay(); // 0 = Sun, 1 = Mon...
+                    
+                    // Adjust for Monday start (Optional: standard JS starts Sunday)
+                    // Let's keep standard Sunday start for simplicity, or add empty slots.
+                    
+                    // Empty slots for days before the 1st
+                    for (let e = 0; e < firstDayIndex; e++) {
+                        const empty = document.createElement('div');
+                        empty.className = 'day empty';
+                        daysGrid.appendChild(empty);
+                    }
+
+                    // Actual Days
+                    for (let d = 1; d <= daysInMonth; d++) {
+                        const dayBtn = document.createElement('div');
+                        dayBtn.className = 'day';
+                        dayBtn.innerText = d;
+                        
+                        // Check if marked
+                        if (cal.marks.includes(`${m}-${d}`)) {
+                            dayBtn.classList.add('marked');
+                            dayBtn.innerText = ""; // Hide number, show X via CSS
+                        }
+
+                        dayBtn.onclick = () => toggleDay(cal.id, m, d);
+                        daysGrid.appendChild(dayBtn);
+                    }
+
+                    monthDiv.appendChild(daysGrid);
+                    monthsGrid.appendChild(monthDiv);
+                }
+
+                wrapper.appendChild(monthsGrid);
+                app.appendChild(wrapper);
+            });
+        }
+
+        document.getElementById('add-cal-btn').onclick = () => {
+            const name = prompt("Name your new calendar (e.g., 'Workout', 'Reading'):");
+            if (name) createCalendar(name);
+        };
+
+        // Initial Render
+        if (calendars.length === 0) {
+            createCalendar("My Habits"); // Create a default one if empty
+        } else {
+            renderApp();
+        }
+
+    </script>
+</body>
+</html>
