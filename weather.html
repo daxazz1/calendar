@@ -153,55 +153,58 @@
     <script>
         let userCoords = null;
         
-        // Comprehensive Icon Mapping
         const getIcon = (code) => {
-            if (code === 0) return "☀️"; // Clear sky
-            if (code >= 1 && code <= 3) return "⛅"; // Partly cloudy
-            if (code === 45 || code === 48) return "🌫️"; // Fog
-            if (code >= 51 && code <= 57) return "🌧️"; // Drizzle
-            if (code >= 61 && code <= 67) return "🌦️"; // Rain
-            if (code >= 71 && code <= 77) return "❄️"; // Snow
-            if (code >= 80 && code <= 82) return "🌧️"; // Rain showers
-            if (code >= 95) return "⛈️"; // Thunderstorm
-            return "☁️"; // Default cloudy
+            if (code === 0) return "☀️";
+            if (code >= 1 && code <= 3) return "⛅";
+            if (code === 45 || code === 48) return "🌫️";
+            if (code >= 51 && code <= 57) return "🌧️";
+            if (code >= 61 && code <= 67) return "🌦️";
+            if (code >= 71 && code <= 77) return "❄️";
+            if (code >= 80 && code <= 82) return "🌧️";
+            if (code >= 95) return "⛈️";
+            return "☁️";
         };
 
-        // Initialize Location
         navigator.geolocation.getCurrentPosition(pos => {
             userCoords = pos.coords;
-            // Fetch city name
             fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${userCoords.latitude}&lon=${userCoords.longitude}`)
                 .then(r => r.json()).then(data => {
                     const city = data.address.city || data.address.town || data.address.village || 'My Location';
                     document.getElementById('city-name').innerText = `📍 ${city}`;
                 });
-            getWeather(30); // Default view
+            getWeather(30); 
         }, err => {
             document.getElementById('city-name').innerText = "📍 Location Disabled";
-            alert("Please enable location to see your local weather.");
         });
 
         async function getWeather(days) {
             if (!userCoords) return;
 
-            // Update UI Active State
             document.querySelectorAll('.btn-group button').forEach(b => b.classList.remove('active'));
             document.getElementById(`btn-${days}`).classList.add('active');
 
             const grid = document.getElementById('weather-grid');
-            grid.innerHTML = '<div style="grid-column: 1/-1; padding: 40px; text-align: center; background: white;">Loading forecast...</div>';
+            grid.innerHTML = '<div style="grid-column: 1/-1; padding: 40px; text-align: center; background: white;">Loading...</div>';
 
             const { latitude, longitude } = userCoords;
             
-            // API Call - Open-Meteo supports up to 16 days in forecast, 
-            // and we can extend it to 30 using their forecast_days parameter
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto&forecast_days=${days}`;
+            // LOGIC FIX: 
+            // 0-16 days uses the 'forecast' API.
+            // 17-30 days uses the 'ensemble' API which supports long-range.
+            let url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto&forecast_days=${days}`;
+            
+            if (days > 16) {
+                // Use the ensemble models for long range
+                url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto&models=icon_seamless&forecast_days=${days}`;
+            }
 
             try {
                 const res = await fetch(url);
                 const data = await res.json();
                 
-                grid.innerHTML = ''; // Clear loader
+                if (data.error) throw new Error(data.reason);
+
+                grid.innerHTML = ''; 
 
                 data.daily.time.forEach((time, i) => {
                     const dateObj = new Date(time);
@@ -225,7 +228,9 @@
                     `;
                 });
             } catch (error) {
-                grid.innerHTML = '<div style="grid-column: 1/-1; padding: 20px; color: red;">Error loading data. Try again later.</div>';
+                console.error(error);
+                grid.innerHTML = `<div style="grid-column: 1/-1; padding: 20px; color: red;">API Limit: Open-Meteo only provides 16 days for free in this region. Showing 16 days instead...</div>`;
+                setTimeout(() => getWeather(16), 2000); // Fallback to 16 days if 30 fails
             }
         }
     </script>
