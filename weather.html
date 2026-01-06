@@ -12,8 +12,8 @@
         .city-badge { font-size: 1.1rem; font-weight: 700; color: var(--primary); }
         .search-container { position: relative; width: 100%; margin-bottom: 10px; }
         .search-box { display: flex; gap: 5px; }
-        input { flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; outline: none; }
-        input:focus { border-color: var(--primary); }
+        input { flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; outline: none; transition: 0.2s; }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2); }
         .btn-search { background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .suggestions-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--border); border-radius: 8px; margin-top: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; display: none; max-height: 200px; overflow-y: auto; }
         .suggestion-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #f1f5f9; }
@@ -63,29 +63,34 @@
     </div>
 
     <script>
-        // --- 1. IMPROVED SECURITY CHECK ---
-        function checkAuth() {
-            // Checks multiple possible key names used by your calendar
-            const keys = ['isLoggedIn', 'loggedIn', 'auth', 'userStatus', 'user'];
-            const isAuthorized = keys.some(key => {
-                const val = localStorage.getItem(key);
-                return val === 'true' || val === 'active' || val === '1';
-            });
+        // --- 1. ROBUST SECURITY CHECK ---
+        function performAuthCheck() {
+            let isAuthenticated = false;
+            
+            // Scan all LocalStorage for any key containing "log", "auth", or "user" set to "true"
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i).toLowerCase();
+                const val = localStorage.getItem(localStorage.key(i)).toLowerCase();
+                if ((key.includes('log') || key.includes('auth') || key.includes('user')) && 
+                    (val === 'true' || val === 'active' || val === '1')) {
+                    isAuthenticated = true;
+                    break;
+                }
+            }
 
-            // Check cookies as a fallback
-            const hasCookie = document.cookie.includes('isLoggedIn=true') || document.cookie.includes('loggedIn=true');
+            // Check cookies as fallback
+            if (document.cookie.includes('isLoggedIn=true') || document.cookie.includes('loggedIn=true')) {
+                isAuthenticated = true;
+            }
 
-            if (!isAuthorized && !hasCookie) {
-                console.log("Not logged in. Redirecting to login page...");
-                window.location.href = 'index.html';
+            if (!isAuthenticated) {
+                // Short delay to allow session data to settle before redirecting
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 200);
                 return false;
             }
             return true;
-        }
-
-        // Run security check immediately
-        if (checkAuth()) {
-            startApp();
         }
 
         // --- 2. WEATHER LOGIC ---
@@ -94,15 +99,16 @@
         let debounceTimer;
 
         const getIcon = (code) => {
-            if (code === 0) return "☀️";
-            if (code >= 1 && code <= 3) return "⛅";
-            if (code === 45 || code === 48) return "🌫️";
-            if (code >= 51 && code <= 57) return "🌧️";
-            if (code >= 61 && code <= 67) return "🌦️";
-            if (code >= 71 && code <= 77) return "❄️";
-            if (code >= 80 && code <= 82) return "🌧️";
-            if (code >= 95) return "⛈️";
-            return "☁️";
+            const icons = {
+                0: "☀️", 1: "⛅", 2: "⛅", 3: "⛅",
+                45: "🌫️", 48: "🌫️",
+                51: "🌧️", 53: "🌧️", 55: "🌧️",
+                61: "🌦️", 63: "🌦️", 65: "🌦️",
+                71: "❄️", 73: "❄️", 75: "❄️",
+                80: "🌧️", 81: "🌧️", 82: "🌧️",
+                95: "⛈️", 96: "⛈️", 99: "⛈️"
+            };
+            return icons[code] || "☁️";
         };
 
         const cityInput = document.getElementById('city-input');
@@ -148,7 +154,7 @@
             let recent = JSON.parse(localStorage.getItem('weatherHistory') || '[]');
             recent = recent.filter(item => item.name !== city.name);
             recent.unshift(city);
-            if (recent.length > 4) recent.pop();
+            if (recent.length > 4) recent.pop(); // Keeps the requested 4 searched cities
             localStorage.setItem('weatherHistory', JSON.stringify(recent));
             renderRecent();
         }
@@ -212,7 +218,8 @@
             if (!cityInput.contains(e.target) && !suggestionsBox.contains(e.target)) suggestionsBox.style.display = 'none';
         });
 
-        function startApp() {
+        // Initialize
+        if (performAuthCheck()) {
             renderRecent();
             const lastSearch = JSON.parse(localStorage.getItem('weatherHistory') || '[]');
             if (lastSearch.length > 0) {
