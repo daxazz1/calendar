@@ -7,15 +7,31 @@
     <style>
         :root { --primary: #0ea5e9; --bg: #f1f5f9; --text: #1e293b; --border: #cbd5e1; --max-temp: #ef4444; --min-temp: #3b82f6; }
         body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-        .container { background: white; border-radius: 12px; width: 100%; max-width: 900px; padding: 20px; box-shadow: 0 10px 15px rgba(0,0,0,0.1); }
+        .container { background: white; border-radius: 12px; width: 100%; max-width: 900px; padding: 20px; box-shadow: 0 10px 15px rgba(0,0,0,0.1); position: relative; }
+        
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid var(--bg); padding-bottom: 10px; flex-wrap: wrap; gap: 10px; }
         .city-badge { font-size: 1.1rem; font-weight: 700; color: var(--primary); }
-        .search-box { display: flex; gap: 5px; width: 100%; margin-bottom: 20px; }
+        
+        /* Search & Suggestions Styles */
+        .search-container { position: relative; width: 100%; margin-bottom: 20px; }
+        .search-box { display: flex; gap: 5px; }
         input { flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; }
         .btn-search { background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+
+        .suggestions-list { 
+            position: absolute; top: 100%; left: 0; right: 0; 
+            background: white; border: 1px solid var(--border); border-radius: 8px; 
+            margin-top: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            z-index: 1000; display: none; max-height: 200px; overflow-y: auto;
+        }
+        .suggestion-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #f1f5f9; }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover { background: #f8fafc; color: var(--primary); }
+
         .btn-group { display: flex; gap: 8px; margin-bottom: 20px; }
         .btn-group button { padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: white; cursor: pointer; font-size: 0.85rem; font-weight: 600; }
         .btn-group button.active { background: var(--primary); color: white; border-color: var(--primary); }
+        
         .weather-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
         .day-cell { background: white; padding: 12px 8px; display: flex; flex-direction: column; align-items: center; min-height: 100px; }
         .date-label { font-size: 0.7rem; color: #64748b; font-weight: 600; text-transform: uppercase; text-align: center; }
@@ -23,6 +39,7 @@
         .temp-row { display: flex; justify-content: center; gap: 10px; font-size: 0.95rem; width: 100%; border-top: 1px solid #f1f5f9; padding-top: 5px; }
         .temp-max { font-weight: 800; color: var(--max-temp); }
         .temp-min { color: var(--min-temp); }
+        
         .back-btn { text-decoration: none; color: #64748b; font-size: 0.9rem; font-weight: bold; }
         @media (max-width: 500px) { .weather-grid { grid-template-columns: repeat(3, 1fr); } }
     </style>
@@ -35,10 +52,12 @@
             <a href="index.html" class="back-btn">← Back to Calendar</a>
         </div>
 
-        <div class="search-box">
-            <input type="text" id="city-input" placeholder="Search city..." onkeypress="if(event.key === 'Enter') searchCity()">
-            <button class="btn-search" onclick="searchCity()">Search</button>
-            <button class="btn-search" onclick="initLocation()" style="background:#64748b">📍 Me</button>
+        <div class="search-container">
+            <div class="search-box">
+                <input type="text" id="city-input" placeholder="Start typing city name..." autocomplete="off">
+                <button class="btn-search" onclick="initLocation()" style="background:#64748b">📍 Me</button>
+            </div>
+            <div id="suggestions" class="suggestions-list"></div>
         </div>
 
         <div class="btn-group">
@@ -53,6 +72,7 @@
     <script>
         let currentCoords = null;
         let currentDays = 16;
+        let debounceTimer;
 
         const getIcon = (code) => {
             if (code === 0) return "☀️";
@@ -66,35 +86,66 @@
             return "☁️";
         };
 
-        async function searchCity() {
-            const query = document.getElementById('city-input').value;
-            if (!query) return;
+        // Handle Input Typing
+        const cityInput = document.getElementById('city-input');
+        const suggestionsBox = document.getElementById('suggestions');
 
+        cityInput.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            const query = cityInput.value.trim();
+            
+            if (query.length < 2) {
+                suggestionsBox.style.display = 'none';
+                return;
+            }
+
+            debounceTimer = setTimeout(() => fetchSuggestions(query), 300);
+        });
+
+        async function fetchSuggestions(query) {
             try {
-                const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`);
+                const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=en&format=json`);
                 const data = await res.json();
                 
-                if (data.results && data.results.length > 0) {
-                    const result = data.results[0];
-                    currentCoords = { latitude: result.latitude, longitude: result.longitude };
-                    const displayName = `${result.name}, ${result.country_code.toUpperCase()}`;
-                    document.getElementById('city-name').innerText = `📍 ${displayName}`;
-                    
-                    // MEMORY: Save this city and its coordinates
-                    localStorage.setItem('lastWeatherCity', JSON.stringify({
-                        name: displayName,
-                        coords: currentCoords
-                    }));
-
-                    getWeather();
+                if (data.results) {
+                    suggestionsBox.innerHTML = '';
+                    data.results.forEach(city => {
+                        const div = document.createElement('div');
+                        div.className = 'suggestion-item';
+                        const locationStr = `${city.name}, ${city.admin1 ? city.admin1 + ', ' : ''}${city.country_code.toUpperCase()}`;
+                        div.innerText = locationStr;
+                        div.onclick = () => selectCity(city, locationStr);
+                        suggestionsBox.appendChild(div);
+                    });
+                    suggestionsBox.style.display = 'block';
                 } else {
-                    alert("City not found.");
+                    suggestionsBox.style.display = 'none';
                 }
-            } catch (e) { alert("Search failed."); }
+            } catch (e) { console.error("Suggestions failed", e); }
         }
 
+        function selectCity(city, displayName) {
+            currentCoords = { latitude: city.latitude, longitude: city.longitude };
+            document.getElementById('city-name').innerText = `📍 ${displayName}`;
+            cityInput.value = ''; // Clear input
+            suggestionsBox.style.display = 'none';
+
+            localStorage.setItem('lastWeatherCity', JSON.stringify({
+                name: displayName,
+                coords: currentCoords
+            }));
+
+            getWeather();
+        }
+
+        // Close suggestions when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!cityInput.contains(e.target) && !suggestionsBox.contains(e.target)) {
+                suggestionsBox.style.display = 'none';
+            }
+        });
+
         function initLocation() {
-            // Check if we have a saved city first
             const saved = localStorage.getItem('lastWeatherCity');
             if (saved) {
                 const data = JSON.parse(saved);
@@ -102,7 +153,6 @@
                 document.getElementById('city-name').innerText = `📍 ${data.name}`;
                 getWeather();
             } else {
-                // If no memory, use GPS
                 navigator.geolocation.getCurrentPosition(pos => {
                     currentCoords = pos.coords;
                     fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentCoords.latitude}&lon=${currentCoords.longitude}`)
@@ -111,9 +161,7 @@
                             document.getElementById('city-name').innerText = `📍 ${city}`;
                         });
                     getWeather();
-                }, err => { 
-                    document.getElementById('city-name').innerText = "📍 Search for a city"; 
-                });
+                }, err => { document.getElementById('city-name').innerText = "📍 Search for a city"; });
             }
         }
 
