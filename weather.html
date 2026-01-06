@@ -75,6 +75,14 @@
     </div>
 
     <script>
+
+                // --- SECURITY CHECK ---
+        // This checks if the user is logged in. 
+        // If the login cookie/token is missing (deleted), it redirects to index.html
+        if (!document.cookie.includes('isLoggedIn=true') && !localStorage.getItem('isLoggedIn')) {
+            window.location.href = 'index.html'; 
+        }
+        // ----------------------
         let currentCoords = null;
         let currentDays = 16;
         let debounceTimer;
