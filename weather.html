@@ -18,7 +18,7 @@
         .suggestions-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--border); border-radius: 8px; margin-top: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; display: none; max-height: 200px; overflow-y: auto; }
         .suggestion-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #f1f5f9; }
         .suggestion-item:hover { background: #f8fafc; color: var(--primary); }
-        .recent-searches { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+        .recent-searches { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; width: 100%; }
         .recent-item { background: #e2e8f0; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; cursor: pointer; font-weight: 600; color: #475569; transition: 0.2s; }
         .recent-item:hover { background: var(--primary); color: white; }
         .btn-group { display: flex; gap: 8px; margin-bottom: 20px; }
@@ -39,14 +39,14 @@
 
     <div class="container">
         <div class="header">
-            <div id="city-name" class="city-badge">📍 Checking Session...</div>
+            <div id="city-name" class="city-badge">📍 Loading...</div>
             <a href="index.html" class="back-btn">← Back to Calendar</a>
         </div>
 
         <div class="search-container">
             <div class="search-box">
-                <input type="text" id="city-input" placeholder="Type a city name..." autocomplete="off">
-                <button class="btn-search" onclick="useGPS()" style="background:#64748b" title="Use Current Location">📍 Me</button>
+                <input type="text" id="city-input" placeholder="Search city..." autocomplete="off">
+                <button class="btn-search" onclick="useGPS()" style="background:#64748b">📍 Me</button>
             </div>
             <div id="suggestions" class="suggestions-list"></div>
         </div>
@@ -63,11 +63,29 @@
     </div>
 
     <script>
-        // --- 1. SECURITY CHECK ---
-        // Checks if user is logged in. If not, sends them to index.html
-        const auth = localStorage.getItem('isLoggedIn') || localStorage.getItem('loggedIn');
-        if (auth !== 'true') {
-            window.location.href = 'index.html';
+        // --- 1. IMPROVED SECURITY CHECK ---
+        function checkAuth() {
+            // Checks multiple possible key names used by your calendar
+            const keys = ['isLoggedIn', 'loggedIn', 'auth', 'userStatus', 'user'];
+            const isAuthorized = keys.some(key => {
+                const val = localStorage.getItem(key);
+                return val === 'true' || val === 'active' || val === '1';
+            });
+
+            // Check cookies as a fallback
+            const hasCookie = document.cookie.includes('isLoggedIn=true') || document.cookie.includes('loggedIn=true');
+
+            if (!isAuthorized && !hasCookie) {
+                console.log("Not logged in. Redirecting to login page...");
+                window.location.href = 'index.html';
+                return false;
+            }
+            return true;
+        }
+
+        // Run security check immediately
+        if (checkAuth()) {
+            startApp();
         }
 
         // --- 2. WEATHER LOGIC ---
@@ -137,7 +155,7 @@
 
         function renderRecent() {
             const recent = JSON.parse(localStorage.getItem('weatherHistory') || '[]');
-            recentBox.innerHTML = recent.length ? '<span style="font-size:0.7rem; color:#64748b;">Recent:</span>' : '';
+            recentBox.innerHTML = recent.length ? '<span style="font-size:0.7rem; color:#64748b; margin-right:5px;">Recent:</span>' : '';
             recent.forEach(city => {
                 const span = document.createElement('span');
                 span.className = 'recent-item';
@@ -190,18 +208,18 @@
 
         function changeRange(days) { currentDays = days; getWeather(); }
 
-        // Close suggestions on outside click
         document.addEventListener('click', (e) => {
             if (!cityInput.contains(e.target) && !suggestionsBox.contains(e.target)) suggestionsBox.style.display = 'none';
         });
 
-        // Start App
-        renderRecent();
-        const lastSearch = JSON.parse(localStorage.getItem('weatherHistory') || '[]');
-        if (lastSearch.length > 0) {
-            selectCity(lastSearch[0]);
-        } else {
-            useGPS();
+        function startApp() {
+            renderRecent();
+            const lastSearch = JSON.parse(localStorage.getItem('weatherHistory') || '[]');
+            if (lastSearch.length > 0) {
+                selectCity(lastSearch[0]);
+            } else {
+                useGPS();
+            }
         }
     </script>
 </body>
