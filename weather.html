@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Weather</title>
+    <style>
+        body { font-family: system-ui, sans-serif; background: #f8fafc; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; width: 280px; }
+        .temp { font-size: 3rem; font-weight: bold; margin: 10px 0; color: #1e293b; }
+        .desc { color: #64748b; text-transform: capitalize; margin-bottom: 20px; }
+        .back-btn { display: inline-block; margin-top: 20px; color: #2563eb; text-decoration: none; font-weight: bold; }
+        .icon { font-size: 4rem; }
+    </style>
+</head>
+<body>
+    <div class="card" id="weather-card">
+        <div id="loading">Locating...</div>
+    </div>
+
+    <script>
+        const weatherCodes = {
+            0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
+            45: "Fog", 48: "Depositing rime fog", 51: "Drizzle", 61: "Rain",
+            71: "Snow", 95: "Thunderstorm"
+        };
+
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const { latitude, longitude } = pos.coords;
+            const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
+            const data = await res.json();
+            const weather = data.current_weather;
+            
+            document.getElementById('weather-card').innerHTML = `
+                <div class="icon">☀️</div>
+                <div class="temp">${Math.round(weather.temperature)}°C</div>
+                <div class="desc">${weatherCodes[weather.weathercode] || "Mostly Clear"}</div>
+                <div style="font-size: 0.8rem; color: #94a3b8">Wind: ${weather.windspeed} km/h</div>
+                <a href="index.html" class="back-btn">← Back to Calendar</a>
+            `;
+        }, () => {
+            document.getElementById('weather-card').innerHTML = "Enable location to see weather.";
+        });
+    </script>
+</body>
+</html>

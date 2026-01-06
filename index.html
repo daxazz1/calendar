@@ -3,196 +3,262 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>2026 Personal Tracker</title>
+    <title>Personal Tracker</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <style>
-        :root { --primary: #2563eb; --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0; --text: #1e293b; --today: #f59e0b; --weekend-bg: #fff1f2; --weekend-text: #e11d48; }
-        body { -webkit-tap-highlight-color: transparent; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; touch-action: manipulation; }
-        header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
-        .status { font-size: 0.7rem; color: #166534; background: #dcfce7; padding: 4px 8px; border-radius: 10px; }
-        button { cursor: pointer; background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; -webkit-appearance: none; }
+        :root { --primary: #2563eb; --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0; --text: #1e293b; --today: #f59e0b; --weekend-bg: #fff1f2; --weekend-text: #e11d48; --note: #ef4444; --search-highlight: #fef08a; --delete: #ef4444; }
+        body { -webkit-tap-highlight-color: transparent; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 0; margin: 0; touch-action: manipulation; }
+        
+        #login-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+        .login-box { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 350px; text-align: center; }
+        input, textarea, select { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box; font-size: 16px; font-family: inherit; }
+        
+        #main-content { display: none; padding: 15px; max-width: 1200px; margin: 0 auto; }
+        header { display: flex; flex-direction: column; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+        .header-top { display: flex; justify-content: space-between; align-items: center; }
+        
+        .year-selector { background: white; border: 1px solid var(--border); padding: 5px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; width: auto; margin: 0; }
+        .status-pill { font-size: 0.7rem; color: #166534; background: #dcfce7; padding: 4px 10px; border-radius: 20px; margin-right: 10px; }
+        
         .calendar-wrapper { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+        
         .months-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
         .month { border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: white; }
         .month-name { text-align: center; font-weight: bold; margin-bottom: 10px; }
         .weekday-headers, .days-grid { display: grid; grid-template-columns: 30px repeat(7, 1fr); gap: 2px; }
         .weekday-headers { font-size: 0.6rem; color: #64748b; font-weight: bold; text-align: center; margin-bottom: 5px; }
-        .day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; border-radius: 4px; cursor: pointer; border: 2px solid transparent; user-select: none; -webkit-user-select: none; }
+        
+        .day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; border-radius: 4px; cursor: pointer; border: 2px solid transparent; user-select: none; position: relative; }
         .day.week-num { cursor: default; background: #f1f5f9; color: #94a3b8; font-size: 0.6rem; border-right: 1px solid var(--border); }
         .day.weekend { background: var(--weekend-bg); color: var(--weekend-text); }
         .day.is-today { border-color: var(--today); color: var(--today); font-weight: bold; }
         .day.marked { background: var(--primary) !important; color: white !important; font-weight: bold; }
+        .day.search-match { background: var(--search-highlight); border: 2px solid #eab308; }
+        .day.has-note::after { content: ""; position: absolute; top: 2px; right: 2px; width: 0; height: 0; border-style: solid; border-width: 0 6px 6px 0; border-color: transparent var(--note) transparent transparent; }
+
         .day.empty { pointer-events: none; opacity: 0; }
+        button { cursor: pointer; background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; transition: opacity 0.2s; }
+        .btn-delete-cal { background: var(--delete); padding: 5px 10px; font-size: 0.75rem; }
+        .btn-logout { background: transparent; color: #64748b; font-size: 0.8rem; width: auto; font-weight: normal; padding: 5px; }
+
+        #note-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; padding:20px; backdrop-filter: blur(2px); }
+        .modal-content { background:white; padding:20px; border-radius:12px; width:100%; max-width:400px; box-shadow:0 10px 25px rgba(0,0,0,0.2); }
     </style>
 </head>
-<body onclick="">
+<body>
 
-    <header>
-        <h3 style="margin:0">2026 Personal Tracker</h3>
-        <div style="display:flex; align-items:center; gap:10px">
-            <span id="sync-status" class="status">Loading...</span>
-            <button id="addBtn">+ New Calendar</button>
+    <div id="login-screen">
+        <div class="login-box">
+            <h2>Tracker Login</h2>
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="password" placeholder="Password">
+            <button onclick="login()" style="width:100%">Login</button>
         </div>
-    </header>
+    </div>
 
-    <div id="app"></div>
+    <div id="main-content">
+        <header>
+            <a href="weather.html" style="text-decoration:none; background:#0ea5e9; color:white; padding:5px 10px; border-radius:6px; font-size:0.8rem; font-weight:bold; margin-right:10px;">☀️ Weather</a>
+            <div class="header-top">
+                <select id="year-select" class="year-selector" onchange="changeYear()">
+                    <option value="2026" selected>2026</option>
+                    <option value="2027">2027</option>
+                    <option value="2028">2028</option>
+                </select>
+                <div style="display:flex; align-items:center;">
+                    <span id="sync-status" class="status-pill">Synced</span>
+                    <button onclick="loadData()" style="margin-right:10px; background: #64748b; padding: 6px 10px;">↻</button>
+                    <button class="btn-logout" onclick="logout()">Logout</button>
+                </div>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <input type="text" id="search-input" placeholder="Search notes..." oninput="render()" style="margin:0; padding:8px;">
+                <button onclick="addCalendar()" style="white-space:nowrap">+ New Cal</button>
+            </div>
+        </header>
+        <div id="app"></div>
+    </div>
+
+    <div id="note-modal" onclick="if(event.target === this) closeModal()">
+        <div class="modal-content">
+            <h4 id="modal-date-label" style="margin-top:0">Note</h4>
+            <textarea id="note-input" placeholder="Type note..."></textarea>
+            <div style="display:flex; justify-content: space-between; gap:10px; margin-top:15px;">
+                <button id="delete-note-btn" onclick="deleteNoteFromModal()" style="background:var(--delete);">Delete Note</button>
+                <div style="display:flex; gap:10px;">
+                    <button onclick="closeModal()" style="background:#64748b;">Cancel</button>
+                    <button onclick="saveNoteFromModal()">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
-        const DB_URL = "https://calendar-3ce3a-default-rtdb.europe-west1.firebasedatabase.app/calendars.json";
+        const firebaseConfig = {
+            apiKey: "AIzaSyCcTsr0uCCbOYbudgq-MHdJKhgYdEz3Fec",
+            authDomain: "calendar-3ce3a.firebaseapp.com",
+            databaseURL: "https://calendar-3ce3a-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "calendar-3ce3a"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        let currentYear = 2026;
         let calendars = [];
+        let isDataLoaded = false;
+        let currentEditingData = null;
+        let clickTimer = null;
 
-        // 1. DATABASE LOADING
+        window.login = async () => {
+            try { await auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value); } 
+            catch (e) { alert(e.message); }
+        };
+        window.logout = () => auth.signOut().then(() => location.reload());
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+                loadData();
+            }
+        });
+
         async function loadData() {
-            try {
-                console.log("Fetching data...");
-                const r = await fetch(DB_URL);
-                const data = await r.json();
-                
-                if (!data) {
-                    calendars = [];
-                } else if (Array.isArray(data)) {
-                    calendars = data.filter(i => i !== null);
-                } else {
-                    calendars = Object.values(data);
-                }
-                
-                console.log("Data loaded:", calendars);
-                document.getElementById('sync-status').innerText = "Synced";
-                render();
-            } catch (e) {
-                console.error("Load error:", e);
-                document.getElementById('sync-status').innerText = "Load Error";
-            }
-        }
-
-        // 2. DATABASE SAVING
-        async function saveData() {
-            document.getElementById('sync-status').innerText = "Saving...";
-            try {
-                await fetch(DB_URL, { 
-                    method: 'PUT', 
-                    body: JSON.stringify(calendars) 
-                });
-                document.getElementById('sync-status').innerText = "Synced";
-            } catch (e) {
-                console.error("Save error:", e);
-                document.getElementById('sync-status').innerText = "Save Failed";
-            }
-        }
-
-        // 3. TOGGLE FUNCTION
-        window.toggleDay = function(calId, m, d) {
-            console.log("Click detected for:", calId, m, d);
-            const cal = calendars.find(c => c.id === calId);
-            if (!cal) return;
-
-            if (!cal.marks) cal.marks = [];
-            const key = m + "-" + d;
-            
-            if (cal.marks.includes(key)) {
-                cal.marks = cal.marks.filter(x => x !== key);
-            } else {
-                cal.marks.push(key);
-            }
-            
+            const statusEl = document.getElementById('sync-status');
+            statusEl.innerText = "Loading...";
+            const token = await auth.currentUser.getIdToken();
+            const r = await fetch(`${firebaseConfig.databaseURL}/calendars/${currentYear}.json?auth=${token}`);
+            const data = await r.json();
+            calendars = data ? (Array.isArray(data) ? data.filter(i => i !== null) : Object.values(data)) : [];
+            isDataLoaded = true;
             render();
-            saveData();
+            statusEl.innerText = "Synced";
+        }
+
+        async function saveData() {
+            const token = await auth.currentUser.getIdToken();
+            await fetch(`${firebaseConfig.databaseURL}/calendars/${currentYear}.json?auth=${token}`, { 
+                method: 'PUT', body: JSON.stringify(calendars) 
+            });
+        }
+
+        window.changeYear = () => {
+            currentYear = parseInt(document.getElementById('year-select').value);
+            loadData();
         };
 
-        // 4. NEW CALENDAR
-        document.getElementById('addBtn').onclick = function() {
-            const name = prompt("Calendar Name:");
-            if (name) {
-                const newCal = { id: Date.now(), name: name, marks: [] };
-                calendars.push(newCal);
-                render();
-                saveData();
-            }
-        };
-
-        // 5. DELETE CALENDAR
-        window.deleteCal = function(id) {
-            if(confirm("Delete this calendar?")) {
+        window.deleteCalendar = (id) => {
+            if(confirm("Delete this entire calendar and all its data?")) {
                 calendars = calendars.filter(c => c.id !== id);
                 render();
                 saveData();
             }
         };
 
-        // 6. WEEK NUMBER LOGIC
+        window.addCalendar = () => {
+            const name = prompt("Enter Calendar Name:");
+            if (name) { 
+                calendars.push({ id: Date.now(), name, marks: [], notes: {} }); 
+                render(); 
+                saveData(); 
+            }
+        };
+
+        window.handleDayClick = (calId, m, d) => {
+            if (clickTimer) {
+                clearTimeout(clickTimer); clickTimer = null;
+                openNoteModal(calId, m, d);
+            } else {
+                clickTimer = setTimeout(() => {
+                    const cal = calendars.find(c => c.id === calId);
+                    const key = `${m}-${d}`;
+                    if (cal.notes && cal.notes[key]) openNoteModal(calId, m, d);
+                    else {
+                        if (!cal.marks) cal.marks = [];
+                        cal.marks.includes(key) ? cal.marks = cal.marks.filter(x => x !== key) : cal.marks.push(key);
+                        render(); saveData();
+                    }
+                    clickTimer = null;
+                }, 250);
+            }
+        };
+
+        window.openNoteModal = (calId, m, d) => {
+            currentEditingData = { calId, m, d };
+            const cal = calendars.find(c => c.id === calId);
+            const key = `${m}-${d}`;
+            const existing = (cal.notes && cal.notes[key]) ? cal.notes[key] : "";
+            document.getElementById('modal-date-label').innerText = `${currentYear} - ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m]} ${d}`;
+            document.getElementById('note-input').value = existing;
+            document.getElementById('note-modal').style.display = 'flex';
+            document.getElementById('delete-note-btn').style.display = existing ? 'block' : 'none';
+        };
+
+        window.saveNoteFromModal = () => {
+            const { calId, m, d } = currentEditingData;
+            const cal = calendars.find(c => c.id === calId);
+            if (!cal.notes) cal.notes = {};
+            cal.notes[`${m}-${d}`] = document.getElementById('note-input').value;
+            render(); saveData(); closeModal();
+        };
+
+        window.deleteNoteFromModal = () => {
+            const { calId, m, d } = currentEditingData;
+            delete calendars.find(c => c.id === calId).notes[`${m}-${d}`];
+            render(); saveData(); closeModal();
+        };
+
+        window.closeModal = () => document.getElementById('note-modal').style.display = 'none';
+
         function getWk(date) {
-            let t = new Date(date.getTime()); 
-            t.setHours(0,0,0,0);
+            let t = new Date(date.getTime()); t.setHours(0,0,0,0);
             t.setDate(t.getDate() + 3 - (t.getDay() + 6) % 7);
             let w1 = new Date(t.getFullYear(), 0, 4);
             return 1 + Math.round(((t - w1)/86400000 - 3 + (w1.getDay() + 6)%7)/7);
         }
 
-        // 7. RENDER ENGINE
         function render() {
             const app = document.getElementById('app');
+            const search = document.getElementById('search-input').value.toLowerCase();
             app.innerHTML = '';
-            
-            if (calendars.length === 0) {
-                app.innerHTML = '<p style="text-align:center; padding:50px; color:#94a3b8;">No calendars yet. Click + New Calendar.</p>';
-                return;
-            }
-
             calendars.forEach(cal => {
-                const wrap = document.createElement('div');
+                let wrap = document.createElement('div');
                 wrap.className = 'calendar-wrapper';
+                let html = `<div class="cal-header">
+                    <strong>${cal.name}</strong>
+                    <button class="btn-delete-cal" onclick="deleteCalendar(${cal.id})">Delete Calendar</button>
+                </div><div class="months-grid">`;
                 
-                let html = `
-                    <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px solid #e2e8f0; padding-bottom:10px">
-                        <strong>${cal.name}</strong>
-                        <button onclick="deleteCal(${cal.id})" style="background:#ef4444; padding:4px 8px; font-size:0.7rem">Delete</button>
-                    </div>
-                    <div class="months-grid">`;
-
                 for (let m = 0; m < 12; m++) {
-                    html += `
-                        <div class="month">
-                            <div class="month-name">${['January','February','March','April','May','June','July','August','September','October','November','December'][m]}</div>
-                            <div class="weekday-headers"><div>Wk</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div style="color:red">S</div><div style="color:red">S</div></div>
-                            <div class="days-grid">`;
-                    
-                    const first = new Date(2026, m, 1);
-                    const last = new Date(2026, m + 1, 0).getDate();
-                    let startIdx = first.getDay() === 0 ? 6 : first.getDay() - 1;
-                    
-                    let day = 1;
+                    html += `<div class="month"><div class="month-name">${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m]}</div><div class="weekday-headers"><div>Wk</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div><div>S</div></div><div class="days-grid">`;
+                    const last = new Date(currentYear, m + 1, 0).getDate();
+                    const startIdx = (new Date(currentYear, m, 1).getDay() + 6) % 7;
+                    let d = 1;
                     for (let r = 0; r < 6; r++) {
-                        if (day > last) break;
-                        
-                        // Add Week Num
-                        html += `<div class="day week-num">${getWk(new Date(2026, m, day))}</div>`;
-                        
+                        if (d > last) break;
+                        html += `<div class="day week-num">${getWk(new Date(currentYear, m, d))}</div>`;
                         for (let c = 0; c < 7; c++) {
                             const pos = r * 7 + c;
-                            if (pos < startIdx || day > last) {
-                                html += `<div class="day empty"></div>`;
-                            } else {
-                                const currentDay = day;
-                                const isX = cal.marks && cal.marks.includes(m + "-" + currentDay);
-                                const isToday = (currentDay === new Date().getDate() && m === new Date().getMonth() && new Date().getFullYear() === 2026);
-                                
-                                html += `<div 
-                                    class="day ${isX ? 'marked' : ''} ${c >= 5 ? 'weekend' : ''} ${isToday ? 'is-today' : ''}" 
-                                    onclick="toggleDay(${cal.id}, ${m}, ${currentDay})">
-                                    ${isX ? 'X' : currentDay}
-                                </div>`;
-                                day++;
+                            if (pos < startIdx || d > last) html += `<div class="day empty"></div>`;
+                            else {
+                                const key = `${m}-${d}`;
+                                const isX = cal.marks?.includes(key);
+                                const note = cal.notes?.[key] || "";
+                                const isMatch = search && note.toLowerCase().includes(search);
+                                const isToday = (d === new Date().getDate() && m === new Date().getMonth() && currentYear === new Date().getFullYear());
+                                html += `<div class="day ${isX?'marked':''} ${c>=5?'weekend':''} ${isToday?'is-today':''} ${note?'has-note':''} ${isMatch?'search-match':''}" onclick="handleDayClick(${cal.id},${m},${d})">${isX?'X':d}</div>`;
+                                d++;
                             }
                         }
                     }
                     html += `</div></div>`;
                 }
-                html += `</div>`;
-                wrap.innerHTML = html;
+                wrap.innerHTML = html + `</div>`;
                 app.appendChild(wrap);
             });
         }
-
-        loadData();
     </script>
 </body>
 </html>
