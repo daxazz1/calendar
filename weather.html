@@ -3,44 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quick Weather</title>
+    <title>Advanced Weather</title>
     <style>
-        body { font-family: system-ui, sans-serif; background: #f8fafc; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; width: 280px; }
-        .temp { font-size: 3rem; font-weight: bold; margin: 10px 0; color: #1e293b; }
-        .desc { color: #64748b; text-transform: capitalize; margin-bottom: 20px; }
-        .back-btn { display: inline-block; margin-top: 20px; color: #2563eb; text-decoration: none; font-weight: bold; }
-        .icon { font-size: 4rem; }
+        :root { --primary: #0ea5e9; --bg: #f8fafc; --text: #1e293b; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; max-width: 500px; text-align: center; }
+        .temp-now { font-size: 3.5rem; font-weight: bold; margin: 10px 0; color: var(--primary); }
+        .location-label { font-size: 0.9rem; color: #64748b; margin-bottom: 20px; }
+        
+        .btn-group { display: flex; gap: 5px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
+        .btn-group button { background: #e2e8f0; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 0.8rem; }
+        .btn-group button.active { background: var(--primary); color: white; }
+        
+        .forecast-list { text-align: left; margin-top: 20px; max-height: 400px; overflow-y: auto; border-top: 1px solid #e2e8f0; }
+        .forecast-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
+        .forecast-date { font-weight: bold; width: 100px; }
+        .back-btn { margin-top: 20px; display: block; color: #64748b; text-decoration: none; font-size: 0.9rem; }
     </style>
 </head>
 <body>
-    <div class="card" id="weather-card">
-        <div id="loading">Locating...</div>
+
+    <div class="card">
+        <div id="city-name" class="location-label">Detecting location...</div>
+        <div id="current-weather">
+            <div id="main-temp" class="temp-now">--°C</div>
+            <div id="main-desc" style="text-transform: capitalize; margin-bottom: 20px;">Loading...</div>
+        </div>
+
+        <div class="btn-group" id="range-btns">
+            <button onclick="getWeather(1)" class="active">Today</button>
+            <button onclick="getWeather(7)">7 Days</button>
+            <button onclick="getWeather(10)">10 Days</button>
+            <button onclick="getWeather(16)">16 Days</button>
+            <button onclick="getWeather(30)">30 Days</button>
+        </div>
+
+        <div id="forecast-cont" class="forecast-list"></div>
+        
+        <a href="index.html" class="back-btn">← Back to Calendar</a>
     </div>
 
     <script>
-        const weatherCodes = {
-            0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
-            45: "Fog", 48: "Depositing rime fog", 51: "Drizzle", 61: "Rain",
-            71: "Snow", 95: "Thunderstorm"
-        };
+        let userCoords = null;
+        const weatherCodes = { 0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast", 45: "Fog", 51: "Drizzle", 61: "Rain", 71: "Snow", 95: "Thunderstorm" };
 
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-            const { latitude, longitude } = pos.coords;
-            const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
-            const data = await res.json();
-            const weather = data.current_weather;
-            
-            document.getElementById('weather-card').innerHTML = `
-                <div class="icon">☀️</div>
-                <div class="temp">${Math.round(weather.temperature)}°C</div>
-                <div class="desc">${weatherCodes[weather.weathercode] || "Mostly Clear"}</div>
-                <div style="font-size: 0.8rem; color: #94a3b8">Wind: ${weather.windspeed} km/h</div>
-                <a href="index.html" class="back-btn">← Back to Calendar</a>
-            `;
+        // 1. Get Location
+        navigator.geolocation.getCurrentPosition(pos => {
+            userCoords = pos.coords;
+            // Get city name using reverse geocoding
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${userCoords.latitude}&lon=${userCoords.longitude}`)
+                .then(r => r.json()).then(data => {
+                    document.getElementById('city-name').innerText = `📍 ${data.address.city || data.address.town || 'Your Location'}`;
+                });
+            getWeather(1); // Default to Today
         }, () => {
-            document.getElementById('weather-card').innerHTML = "Enable location to see weather.";
+            document.getElementById('city-name').innerText = "Location access denied.";
         });
+
+        async function getWeather(days) {
+            if (!userCoords) return;
+            
+            // Highlight active button
+            document.querySelectorAll('.btn-group button').forEach((btn, idx) => {
+                btn.classList.toggle('active', [1, 7, 10, 16, 30][idx] === days);
+            });
+
+            const { latitude, longitude } = userCoords;
+            // Note: Open-Meteo free tier goes up to 16 days for standard forecast. 
+            // For 30 days, we use their ensemble/climate models.
+            const url = days <= 16 
+                ? `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode&current_weather=true&timezone=auto&forecast_days=${days}`
+                : `https://climate-api.open-meteo.com/v1/climate?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min&start_date=${new Date().toISOString().split('T')[0]}&end_date=${new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]}&models=best_match`;
+
+            const res = await fetch(url);
+            const data = await res.json();
+            
+            // Render Current Top Section
+            if (data.current_weather) {
+                document.getElementById('main-temp').innerText = `${Math.round(data.current_weather.temperature)}°C`;
+                document.getElementById('main-desc').innerText = weatherCodes[data.current_weather.weathercode] || "Variable Conditions";
+            }
+
+            // Render Forecast List
+            const list = document.getElementById('forecast-cont');
+            list.innerHTML = '';
+            
+            data.daily.time.forEach((time, i) => {
+                const date = new Date(time).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+                const max = Math.round(data.daily.temperature_2m_max[i]);
+                const min = Math.round(data.daily.temperature_2m_min[i]);
+                const code = data.daily.weathercode ? weatherCodes[data.daily.weathercode[i]] || "" : "Cloudy";
+                
+                list.innerHTML += `
+                    <div class="forecast-item">
+                        <span class="forecast-date">${date}</span>
+                        <span style="color: #64748b; flex-grow: 1;">${code}</span>
+                        <span><strong>${max}°</strong> / ${min}°</span>
+                    </div>
+                `;
+            });
+        }
     </script>
 </body>
 </html>
