@@ -12,11 +12,15 @@
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid var(--bg); padding-bottom: 10px; flex-wrap: wrap; gap: 10px; }
         .city-badge { font-size: 1.1rem; font-weight: 700; color: var(--primary); }
         
-        /* Search & Suggestions Styles */
-        .search-container { position: relative; width: 100%; margin-bottom: 20px; }
+        .search-container { position: relative; width: 100%; margin-bottom: 10px; }
         .search-box { display: flex; gap: 5px; }
         input { flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; }
         .btn-search { background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+
+        /* Recent Searches bar */
+        .recent-searches { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .recent-item { background: #e2e8f0; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; cursor: pointer; font-weight: 600; color: #475569; transition: all 0.2s; }
+        .recent-item:hover { background: var(--primary); color: white; }
 
         .suggestions-list { 
             position: absolute; top: 100%; left: 0; right: 0; 
@@ -25,7 +29,6 @@
             z-index: 1000; display: none; max-height: 200px; overflow-y: auto;
         }
         .suggestion-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #f1f5f9; }
-        .suggestion-item:last-child { border-bottom: none; }
         .suggestion-item:hover { background: #f8fafc; color: var(--primary); }
 
         .btn-group { display: flex; gap: 8px; margin-bottom: 20px; }
@@ -49,16 +52,18 @@
     <div class="container">
         <div class="header">
             <div id="city-name" class="city-badge">📍 Loading...</div>
-            <a href="index.html" class="back-btn">← Back to Calendar</a>
+            <a href="index.html" class="back-btn">← Back</a>
         </div>
 
         <div class="search-container">
             <div class="search-box">
-                <input type="text" id="city-input" placeholder="Start typing city name..." autocomplete="off">
-                <button class="btn-search" onclick="initLocation()" style="background:#64748b">📍 Me</button>
+                <input type="text" id="city-input" placeholder="Search city..." autocomplete="off">
+                <button class="btn-search" onclick="useGPS()" style="background:#64748b">📍 Me</button>
             </div>
             <div id="suggestions" class="suggestions-list"></div>
         </div>
+
+        <div id="recent-searches" class="recent-searches"></div>
 
         <div class="btn-group">
             <button onclick="changeRange(7)" id="btn-7">7 Days</button>
@@ -86,19 +91,14 @@
             return "☁️";
         };
 
-        // Handle Input Typing
         const cityInput = document.getElementById('city-input');
         const suggestionsBox = document.getElementById('suggestions');
+        const recentBox = document.getElementById('recent-searches');
 
         cityInput.addEventListener('input', () => {
             clearTimeout(debounceTimer);
             const query = cityInput.value.trim();
-            
-            if (query.length < 2) {
-                suggestionsBox.style.display = 'none';
-                return;
-            }
-
+            if (query.length < 2) { suggestionsBox.style.display = 'none'; return; }
             debounceTimer = setTimeout(() => fetchSuggestions(query), 300);
         });
 
@@ -106,69 +106,77 @@
             try {
                 const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=en&format=json`);
                 const data = await res.json();
-                
                 if (data.results) {
                     suggestionsBox.innerHTML = '';
                     data.results.forEach(city => {
                         const div = document.createElement('div');
                         div.className = 'suggestion-item';
-                        const locationStr = `${city.name}, ${city.admin1 ? city.admin1 + ', ' : ''}${city.country_code.toUpperCase()}`;
+                        const locationStr = `${city.name}, ${city.country_code.toUpperCase()}`;
                         div.innerText = locationStr;
-                        div.onclick = () => selectCity(city, locationStr);
+                        div.onclick = () => selectCity({ name: locationStr, latitude: city.latitude, longitude: city.longitude });
                         suggestionsBox.appendChild(div);
                     });
                     suggestionsBox.style.display = 'block';
-                } else {
-                    suggestionsBox.style.display = 'none';
                 }
-            } catch (e) { console.error("Suggestions failed", e); }
+            } catch (e) { console.error(e); }
         }
 
-        function selectCity(city, displayName) {
-            currentCoords = { latitude: city.latitude, longitude: city.longitude };
-            document.getElementById('city-name').innerText = `📍 ${displayName}`;
-            cityInput.value = ''; // Clear input
+        function selectCity(cityObj) {
+            currentCoords = { latitude: cityObj.latitude, longitude: cityObj.longitude };
+            document.getElementById('city-name').innerText = `📍 ${cityObj.name}`;
+            cityInput.value = '';
             suggestionsBox.style.display = 'none';
 
-            localStorage.setItem('lastWeatherCity', JSON.stringify({
-                name: displayName,
-                coords: currentCoords
-            }));
-
+            saveToRecent(cityObj);
             getWeather();
         }
 
-        // Close suggestions when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!cityInput.contains(e.target) && !suggestionsBox.contains(e.target)) {
-                suggestionsBox.style.display = 'none';
-            }
-        });
+        function saveToRecent(city) {
+            let recent = JSON.parse(localStorage.getItem('weatherHistory') || '[]');
+            // Filter out if city already exists (to move it to front)
+            recent = recent.filter(item => item.name !== city.name);
+            recent.unshift(city); // Add to beginning
+            if (recent.length > 4) recent.pop(); // Keep only 4
+            
+            localStorage.setItem('weatherHistory', JSON.stringify(recent));
+            renderRecent();
+        }
 
-        function initLocation() {
-            const saved = localStorage.getItem('lastWeatherCity');
-            if (saved) {
-                const data = JSON.parse(saved);
-                currentCoords = data.coords;
-                document.getElementById('city-name').innerText = `📍 ${data.name}`;
-                getWeather();
+        function renderRecent() {
+            const recent = JSON.parse(localStorage.getItem('weatherHistory') || '[]');
+            recentBox.innerHTML = recent.length ? '<span style="font-size:0.7rem; color:#64748b; width:100%">Recent:</span>' : '';
+            recent.forEach(city => {
+                const span = document.createElement('span');
+                span.className = 'recent-item';
+                span.innerText = city.name;
+                span.onclick = () => selectCity(city);
+                recentBox.appendChild(span);
+            });
+        }
+
+        function useGPS() {
+            navigator.geolocation.getCurrentPosition(pos => {
+                currentCoords = pos.coords;
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentCoords.latitude}&lon=${currentCoords.longitude}`)
+                    .then(r => r.json()).then(data => {
+                        const name = data.address.city || data.address.town || 'My Location';
+                        document.getElementById('city-name').innerText = `📍 ${name}`;
+                        getWeather();
+                    });
+            });
+        }
+
+        function init() {
+            renderRecent();
+            const recent = JSON.parse(localStorage.getItem('weatherHistory') || '[]');
+            if (recent.length > 0) {
+                selectCity(recent[0]);
             } else {
-                navigator.geolocation.getCurrentPosition(pos => {
-                    currentCoords = pos.coords;
-                    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentCoords.latitude}&lon=${currentCoords.longitude}`)
-                        .then(r => r.json()).then(data => {
-                            const city = data.address.city || data.address.town || 'Location';
-                            document.getElementById('city-name').innerText = `📍 ${city}`;
-                        });
-                    getWeather();
-                }, err => { document.getElementById('city-name').innerText = "📍 Search for a city"; });
+                useGPS();
             }
         }
 
-        function changeRange(days) {
-            currentDays = days;
-            getWeather();
-        }
+        function changeRange(days) { currentDays = days; getWeather(); }
 
         async function getWeather() {
             if (!currentCoords) return;
@@ -196,10 +204,14 @@
                             </div>
                         </div>`;
                 });
-            } catch (e) { grid.innerHTML = '<div style="grid-column: 1/-1; padding: 20px;">Error loading weather.</div>'; }
+            } catch (e) { grid.innerHTML = '<div style="grid-column:1/-1; padding:20px;">Error.</div>'; }
         }
 
-        initLocation();
+        document.addEventListener('click', (e) => {
+            if (!cityInput.contains(e.target) && !suggestionsBox.contains(e.target)) suggestionsBox.style.display = 'none';
+        });
+
+        init();
     </script>
 </body>
 </html>
