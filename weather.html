@@ -3,38 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Weather Explorer</title>
+    <title>Weather Dashboard</title>
     <style>
         :root { --primary: #0ea5e9; --bg: #f1f5f9; --text: #1e293b; --border: #cbd5e1; --max-temp: #ef4444; --min-temp: #3b82f6; }
         body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
         .container { background: white; border-radius: 12px; width: 100%; max-width: 900px; padding: 20px; box-shadow: 0 10px 15px rgba(0,0,0,0.1); position: relative; }
-        
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid var(--bg); padding-bottom: 10px; flex-wrap: wrap; gap: 10px; }
         .city-badge { font-size: 1.1rem; font-weight: 700; color: var(--primary); }
-        
         .search-container { position: relative; width: 100%; margin-bottom: 10px; }
         .search-box { display: flex; gap: 5px; }
-        input { flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; }
+        input { flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; outline: none; }
+        input:focus { border-color: var(--primary); }
         .btn-search { background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-
-        /* Recent Searches bar */
-        .recent-searches { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
-        .recent-item { background: #e2e8f0; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; cursor: pointer; font-weight: 600; color: #475569; transition: all 0.2s; }
-        .recent-item:hover { background: var(--primary); color: white; }
-
-        .suggestions-list { 
-            position: absolute; top: 100%; left: 0; right: 0; 
-            background: white; border: 1px solid var(--border); border-radius: 8px; 
-            margin-top: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-            z-index: 1000; display: none; max-height: 200px; overflow-y: auto;
-        }
+        .suggestions-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--border); border-radius: 8px; margin-top: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; display: none; max-height: 200px; overflow-y: auto; }
         .suggestion-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #f1f5f9; }
         .suggestion-item:hover { background: #f8fafc; color: var(--primary); }
-
+        .recent-searches { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+        .recent-item { background: #e2e8f0; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; cursor: pointer; font-weight: 600; color: #475569; transition: 0.2s; }
+        .recent-item:hover { background: var(--primary); color: white; }
         .btn-group { display: flex; gap: 8px; margin-bottom: 20px; }
         .btn-group button { padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: white; cursor: pointer; font-size: 0.85rem; font-weight: 600; }
         .btn-group button.active { background: var(--primary); color: white; border-color: var(--primary); }
-        
         .weather-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
         .day-cell { background: white; padding: 12px 8px; display: flex; flex-direction: column; align-items: center; min-height: 100px; }
         .date-label { font-size: 0.7rem; color: #64748b; font-weight: 600; text-transform: uppercase; text-align: center; }
@@ -42,7 +31,6 @@
         .temp-row { display: flex; justify-content: center; gap: 10px; font-size: 0.95rem; width: 100%; border-top: 1px solid #f1f5f9; padding-top: 5px; }
         .temp-max { font-weight: 800; color: var(--max-temp); }
         .temp-min { color: var(--min-temp); }
-        
         .back-btn { text-decoration: none; color: #64748b; font-size: 0.9rem; font-weight: bold; }
         @media (max-width: 500px) { .weather-grid { grid-template-columns: repeat(3, 1fr); } }
     </style>
@@ -51,14 +39,14 @@
 
     <div class="container">
         <div class="header">
-            <div id="city-name" class="city-badge">📍 Loading...</div>
-            <a href="index.html" class="back-btn">← Back</a>
+            <div id="city-name" class="city-badge">📍 Checking Session...</div>
+            <a href="index.html" class="back-btn">← Back to Calendar</a>
         </div>
 
         <div class="search-container">
             <div class="search-box">
-                <input type="text" id="city-input" placeholder="Search city..." autocomplete="off">
-                <button class="btn-search" onclick="useGPS()" style="background:#64748b">📍 Me</button>
+                <input type="text" id="city-input" placeholder="Type a city name..." autocomplete="off">
+                <button class="btn-search" onclick="useGPS()" style="background:#64748b" title="Use Current Location">📍 Me</button>
             </div>
             <div id="suggestions" class="suggestions-list"></div>
         </div>
@@ -75,14 +63,14 @@
     </div>
 
     <script>
-
-                // --- SECURITY CHECK ---
-        // This checks if the user is logged in. 
-        // If the login cookie/token is missing (deleted), it redirects to index.html
-        if (!document.cookie.includes('isLoggedIn=true') && !localStorage.getItem('isLoggedIn')) {
-            window.location.href = 'index.html'; 
+        // --- 1. SECURITY CHECK ---
+        // Checks if user is logged in. If not, sends them to index.html
+        const auth = localStorage.getItem('isLoggedIn') || localStorage.getItem('loggedIn');
+        if (auth !== 'true') {
+            window.location.href = 'index.html';
         }
-        // ----------------------
+
+        // --- 2. WEATHER LOGIC ---
         let currentCoords = null;
         let currentDays = 16;
         let debounceTimer;
@@ -134,25 +122,22 @@
             document.getElementById('city-name').innerText = `📍 ${cityObj.name}`;
             cityInput.value = '';
             suggestionsBox.style.display = 'none';
-
             saveToRecent(cityObj);
             getWeather();
         }
 
         function saveToRecent(city) {
             let recent = JSON.parse(localStorage.getItem('weatherHistory') || '[]');
-            // Filter out if city already exists (to move it to front)
             recent = recent.filter(item => item.name !== city.name);
-            recent.unshift(city); // Add to beginning
-            if (recent.length > 4) recent.pop(); // Keep only 4
-            
+            recent.unshift(city);
+            if (recent.length > 4) recent.pop();
             localStorage.setItem('weatherHistory', JSON.stringify(recent));
             renderRecent();
         }
 
         function renderRecent() {
             const recent = JSON.parse(localStorage.getItem('weatherHistory') || '[]');
-            recentBox.innerHTML = recent.length ? '<span style="font-size:0.7rem; color:#64748b; width:100%">Recent:</span>' : '';
+            recentBox.innerHTML = recent.length ? '<span style="font-size:0.7rem; color:#64748b;">Recent:</span>' : '';
             recent.forEach(city => {
                 const span = document.createElement('span');
                 span.className = 'recent-item';
@@ -171,27 +156,15 @@
                         document.getElementById('city-name').innerText = `📍 ${name}`;
                         getWeather();
                     });
-            });
+            }, () => { alert("Location access denied."); });
         }
-
-        function init() {
-            renderRecent();
-            const recent = JSON.parse(localStorage.getItem('weatherHistory') || '[]');
-            if (recent.length > 0) {
-                selectCity(recent[0]);
-            } else {
-                useGPS();
-            }
-        }
-
-        function changeRange(days) { currentDays = days; getWeather(); }
 
         async function getWeather() {
             if (!currentCoords) return;
             document.querySelectorAll('.btn-group button').forEach(b => b.classList.remove('active'));
             document.getElementById(`btn-${currentDays}`).classList.add('active');
             const grid = document.getElementById('weather-grid');
-            grid.innerHTML = '<div style="grid-column: 1/-1; padding: 40px; text-align: center; background: white;">Loading...</div>';
+            grid.innerHTML = '<div style="grid-column:1/-1; padding:40px; text-align:center;">Loading...</div>';
 
             const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentCoords.latitude}&longitude=${currentCoords.longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto&forecast_days=${currentDays}`;
 
@@ -212,14 +185,24 @@
                             </div>
                         </div>`;
                 });
-            } catch (e) { grid.innerHTML = '<div style="grid-column:1/-1; padding:20px;">Error.</div>'; }
+            } catch (e) { grid.innerHTML = '<div style="grid-column:1/-1; padding:20px;">Weather Error.</div>'; }
         }
 
+        function changeRange(days) { currentDays = days; getWeather(); }
+
+        // Close suggestions on outside click
         document.addEventListener('click', (e) => {
             if (!cityInput.contains(e.target) && !suggestionsBox.contains(e.target)) suggestionsBox.style.display = 'none';
         });
 
-        init();
+        // Start App
+        renderRecent();
+        const lastSearch = JSON.parse(localStorage.getItem('weatherHistory') || '[]');
+        if (lastSearch.length > 0) {
+            selectCity(lastSearch[0]);
+        } else {
+            useGPS();
+        }
     </script>
 </body>
 </html>
