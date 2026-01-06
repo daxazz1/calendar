@@ -8,19 +8,14 @@
         :root { --primary: #0ea5e9; --bg: #f1f5f9; --text: #1e293b; --border: #cbd5e1; --max-temp: #ef4444; --min-temp: #3b82f6; }
         body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
         .container { background: white; border-radius: 12px; width: 100%; max-width: 900px; padding: 20px; box-shadow: 0 10px 15px rgba(0,0,0,0.1); }
-        
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid var(--bg); padding-bottom: 10px; flex-wrap: wrap; gap: 10px; }
         .city-badge { font-size: 1.1rem; font-weight: 700; color: var(--primary); }
-        
-        /* Search Section */
         .search-box { display: flex; gap: 5px; width: 100%; margin-bottom: 20px; }
         input { flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; }
         .btn-search { background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-
         .btn-group { display: flex; gap: 8px; margin-bottom: 20px; }
         .btn-group button { padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: white; cursor: pointer; font-size: 0.85rem; font-weight: 600; }
         .btn-group button.active { background: var(--primary); color: white; border-color: var(--primary); }
-        
         .weather-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
         .day-cell { background: white; padding: 12px 8px; display: flex; flex-direction: column; align-items: center; min-height: 100px; }
         .date-label { font-size: 0.7rem; color: #64748b; font-weight: 600; text-transform: uppercase; text-align: center; }
@@ -28,7 +23,6 @@
         .temp-row { display: flex; justify-content: center; gap: 10px; font-size: 0.95rem; width: 100%; border-top: 1px solid #f1f5f9; padding-top: 5px; }
         .temp-max { font-weight: 800; color: var(--max-temp); }
         .temp-min { color: var(--min-temp); }
-        
         .back-btn { text-decoration: none; color: #64748b; font-size: 0.9rem; font-weight: bold; }
         @media (max-width: 500px) { .weather-grid { grid-template-columns: repeat(3, 1fr); } }
     </style>
@@ -37,12 +31,12 @@
 
     <div class="container">
         <div class="header">
-            <div id="city-name" class="city-badge">📍 Detecting...</div>
+            <div id="city-name" class="city-badge">📍 Loading...</div>
             <a href="index.html" class="back-btn">← Back to Calendar</a>
         </div>
 
         <div class="search-box">
-            <input type="text" id="city-input" placeholder="Enter city name (e.g. Kaunas, London)..." onkeypress="if(event.key === 'Enter') searchCity()">
+            <input type="text" id="city-input" placeholder="Search city..." onkeypress="if(event.key === 'Enter') searchCity()">
             <button class="btn-search" onclick="searchCity()">Search</button>
             <button class="btn-search" onclick="initLocation()" style="background:#64748b">📍 Me</button>
         </div>
@@ -72,7 +66,6 @@
             return "☁️";
         };
 
-        // Geocoding Function: Convert City Name to Lat/Lon
         async function searchCity() {
             const query = document.getElementById('city-input').value;
             if (!query) return;
@@ -84,26 +77,44 @@
                 if (data.results && data.results.length > 0) {
                     const result = data.results[0];
                     currentCoords = { latitude: result.latitude, longitude: result.longitude };
-                    document.getElementById('city-name').innerText = `📍 ${result.name}, ${result.country_code.toUpperCase()}`;
+                    const displayName = `${result.name}, ${result.country_code.toUpperCase()}`;
+                    document.getElementById('city-name').innerText = `📍 ${displayName}`;
+                    
+                    // MEMORY: Save this city and its coordinates
+                    localStorage.setItem('lastWeatherCity', JSON.stringify({
+                        name: displayName,
+                        coords: currentCoords
+                    }));
+
                     getWeather();
                 } else {
-                    alert("City not found. Try another name.");
+                    alert("City not found.");
                 }
-            } catch (e) { alert("Search failed. Check your connection."); }
+            } catch (e) { alert("Search failed."); }
         }
 
         function initLocation() {
-            navigator.geolocation.getCurrentPosition(pos => {
-                currentCoords = pos.coords;
-                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentCoords.latitude}&lon=${currentCoords.longitude}`)
-                    .then(r => r.json()).then(data => {
-                        const city = data.address.city || data.address.town || data.address.village || 'Location';
-                        document.getElementById('city-name').innerText = `📍 ${city}`;
-                    });
+            // Check if we have a saved city first
+            const saved = localStorage.getItem('lastWeatherCity');
+            if (saved) {
+                const data = JSON.parse(saved);
+                currentCoords = data.coords;
+                document.getElementById('city-name').innerText = `📍 ${data.name}`;
                 getWeather();
-            }, err => { 
-                document.getElementById('city-name').innerText = "📍 Enter a city above"; 
-            });
+            } else {
+                // If no memory, use GPS
+                navigator.geolocation.getCurrentPosition(pos => {
+                    currentCoords = pos.coords;
+                    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentCoords.latitude}&lon=${currentCoords.longitude}`)
+                        .then(r => r.json()).then(data => {
+                            const city = data.address.city || data.address.town || 'Location';
+                            document.getElementById('city-name').innerText = `📍 ${city}`;
+                        });
+                    getWeather();
+                }, err => { 
+                    document.getElementById('city-name').innerText = "📍 Search for a city"; 
+                });
+            }
         }
 
         function changeRange(days) {
@@ -113,16 +124,12 @@
 
         async function getWeather() {
             if (!currentCoords) return;
-            
-            // Update Buttons
             document.querySelectorAll('.btn-group button').forEach(b => b.classList.remove('active'));
             document.getElementById(`btn-${currentDays}`).classList.add('active');
-            
             const grid = document.getElementById('weather-grid');
             grid.innerHTML = '<div style="grid-column: 1/-1; padding: 40px; text-align: center; background: white;">Loading...</div>';
 
-            const { latitude, longitude } = currentCoords;
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto&forecast_days=${currentDays}`;
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentCoords.latitude}&longitude=${currentCoords.longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto&forecast_days=${currentDays}`;
 
             try {
                 const res = await fetch(url);
@@ -130,12 +137,10 @@
                 grid.innerHTML = ''; 
                 data.daily.time.forEach((time, i) => {
                     const dateObj = new Date(time);
-                    const dayName = dateObj.toLocaleDateString('en-GB', { weekday: 'short' });
-                    const dayNum = dateObj.getDate();
-                    const monthName = dateObj.toLocaleDateString('en-GB', { month: 'short' });
+                    const dayLabel = dateObj.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
                     grid.innerHTML += `
                         <div class="day-cell">
-                            <span class="date-label">${dayName}, ${dayNum} ${monthName}</span>
+                            <span class="date-label">${dayLabel}</span>
                             <span class="weather-icon">${getIcon(data.daily.weathercode[i])}</span>
                             <div class="temp-row">
                                 <span class="temp-max">${Math.round(data.daily.temperature_2m_max[i])}°</span>
@@ -143,10 +148,9 @@
                             </div>
                         </div>`;
                 });
-            } catch (e) { grid.innerHTML = '<div style="grid-column: 1/-1; padding: 20px;">Error loading data.</div>'; }
+            } catch (e) { grid.innerHTML = '<div style="grid-column: 1/-1; padding: 20px;">Error loading weather.</div>'; }
         }
 
-        // Auto-load GPS location on start
         initLocation();
     </script>
 </body>
