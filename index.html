@@ -9,27 +9,21 @@
     <style>
         :root { --primary: #2563eb; --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0; --text: #1e293b; --today: #f59e0b; --weekend-bg: #fff1f2; --weekend-text: #e11d48; --note: #ef4444; --search-highlight: #fef08a; --delete: #ef4444; }
         body { -webkit-tap-highlight-color: transparent; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 0; margin: 0; touch-action: manipulation; }
-        
         #login-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
         .login-box { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 350px; text-align: center; }
         input, textarea, select { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box; font-size: 16px; font-family: inherit; }
-        
         #main-content { display: none; padding: 15px; max-width: 1200px; margin: 0 auto; }
         header { display: flex; flex-direction: column; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
         .header-top { display: flex; justify-content: space-between; align-items: center; }
-        
         .year-selector { background: white; border: 1px solid var(--border); padding: 5px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; width: auto; margin: 0; }
         .status-pill { font-size: 0.7rem; color: #166534; background: #dcfce7; padding: 4px 10px; border-radius: 20px; margin-right: 10px; }
-        
         .calendar-wrapper { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
-        
         .months-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
         .month { border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: white; }
         .month-name { text-align: center; font-weight: bold; margin-bottom: 10px; }
         .weekday-headers, .days-grid { display: grid; grid-template-columns: 30px repeat(7, 1fr); gap: 2px; }
         .weekday-headers { font-size: 0.6rem; color: #64748b; font-weight: bold; text-align: center; margin-bottom: 5px; }
-        
         .day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; border-radius: 4px; cursor: pointer; border: 2px solid transparent; user-select: none; position: relative; }
         .day.week-num { cursor: default; background: #f1f5f9; color: #94a3b8; font-size: 0.6rem; border-right: 1px solid var(--border); }
         .day.weekend { background: var(--weekend-bg); color: var(--weekend-text); }
@@ -37,18 +31,15 @@
         .day.marked { background: var(--primary) !important; color: white !important; font-weight: bold; }
         .day.search-match { background: var(--search-highlight); border: 2px solid #eab308; }
         .day.has-note::after { content: ""; position: absolute; top: 2px; right: 2px; width: 0; height: 0; border-style: solid; border-width: 0 6px 6px 0; border-color: transparent var(--note) transparent transparent; }
-
         .day.empty { pointer-events: none; opacity: 0; }
         button { cursor: pointer; background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; transition: opacity 0.2s; }
         .btn-delete-cal { background: var(--delete); padding: 5px 10px; font-size: 0.75rem; }
         .btn-logout { background: transparent; color: #64748b; font-size: 0.8rem; width: auto; font-weight: normal; padding: 5px; }
-
         #note-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; padding:20px; backdrop-filter: blur(2px); }
         .modal-content { background:white; padding:20px; border-radius:12px; width:100%; max-width:400px; box-shadow:0 10px 25px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
-
     <div id="login-screen">
         <div class="login-box">
             <h2>Tracker Login</h2>
@@ -69,7 +60,6 @@
                     </select>
                     <a href="weather.html" style="text-decoration:none; background:#0ea5e9; color:white; padding:5px 10px; border-radius:6px; font-size:0.8rem; font-weight:bold;">☀️ Weather</a>
                 </div>
-
                 <div style="display:flex; align-items:center;">
                     <span id="sync-status" class="status-pill">Synced</span>
                     <button onclick="loadData()" style="margin-right:10px; background: #64748b; padding: 6px 10px;">↻</button>
@@ -82,19 +72,6 @@
             </div>
         </header>
         <div id="app"></div>
-    </div>
-    <div id="note-modal" onclick="if(event.target === this) closeModal()">
-        <div class="modal-content">
-            <h4 id="modal-date-label" style="margin-top:0">Note</h4>
-            <textarea id="note-input" placeholder="Type note..."></textarea>
-            <div style="display:flex; justify-content: space-between; gap:10px; margin-top:15px;">
-                <button id="delete-note-btn" onclick="deleteNoteFromModal()" style="background:var(--delete);">Delete Note</button>
-                <div style="display:flex; gap:10px;">
-                    <button onclick="closeModal()" style="background:#64748b;">Cancel</button>
-                    <button onclick="saveNoteFromModal()">Save</button>
-                </div>
-            </div>
-        </div>
     </div>
 
     <script>
@@ -117,13 +94,20 @@
             try { await auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value); } 
             catch (e) { alert(e.message); }
         };
-        window.logout = () => auth.signOut().then(() => location.reload());
+
+        window.logout = () => auth.signOut().then(() => {
+            localStorage.removeItem('isLoggedIn'); // Clear the badge
+            location.reload();
+        });
 
         auth.onAuthStateChanged(user => {
             if (user) {
+                localStorage.setItem('isLoggedIn', 'true'); // Set the badge for weather page
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('main-content').style.display = 'block';
                 loadData();
+            } else {
+                localStorage.removeItem('isLoggedIn');
             }
         });
 
@@ -152,20 +136,15 @@
         };
 
         window.deleteCalendar = (id) => {
-            if(confirm("Delete this entire calendar and all its data?")) {
+            if(confirm("Delete this entire calendar?")) {
                 calendars = calendars.filter(c => c.id !== id);
-                render();
-                saveData();
+                render(); saveData();
             }
         };
 
         window.addCalendar = () => {
             const name = prompt("Enter Calendar Name:");
-            if (name) { 
-                calendars.push({ id: Date.now(), name, marks: [], notes: {} }); 
-                render(); 
-                saveData(); 
-            }
+            if (name) { calendars.push({ id: Date.now(), name, marks: [], notes: {} }); render(); saveData(); }
         };
 
         window.handleDayClick = (calId, m, d) => {
@@ -228,11 +207,7 @@
             calendars.forEach(cal => {
                 let wrap = document.createElement('div');
                 wrap.className = 'calendar-wrapper';
-                let html = `<div class="cal-header">
-                    <strong>${cal.name}</strong>
-                    <button class="btn-delete-cal" onclick="deleteCalendar(${cal.id})">Delete Calendar</button>
-                </div><div class="months-grid">`;
-                
+                let html = `<div class="cal-header"><strong>${cal.name}</strong><button class="btn-delete-cal" onclick="deleteCalendar(${cal.id})">Delete Calendar</button></div><div class="months-grid">`;
                 for (let m = 0; m < 12; m++) {
                     html += `<div class="month"><div class="month-name">${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m]}</div><div class="weekday-headers"><div>Wk</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div><div>S</div></div><div class="days-grid">`;
                     const last = new Date(currentYear, m + 1, 0).getDate();
