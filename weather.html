@@ -3,46 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Weather Table</title>
+    <title>Weather Dashboard</title>
     <style>
-        :root { --primary: #0ea5e9; --bg: #f1f5f9; --text: #1e293b; --border: #cbd5e1; }
-        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+        :root { 
+            --primary: #0ea5e9; 
+            --bg: #f1f5f9; 
+            --text: #1e293b; 
+            --border: #cbd5e1; 
+            --max-temp: #ef4444;
+            --min-temp: #3b82f6;
+        }
         
-        .container { background: white; border-radius: 12px; width: 100%; max-width: 800px; padding: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            background: var(--bg); 
+            color: var(--text); 
+            margin: 0; 
+            padding: 15px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+        }
         
-        /* Grid Layout similar to Meteofor */
+        .container { 
+            background: white; 
+            border-radius: 12px; 
+            width: 100%; 
+            max-width: 900px; 
+            padding: 20px; 
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); 
+        }
+        
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 20px; 
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--bg);
+        }
+
+        .city-badge {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        
+        .btn-group { 
+            display: flex; 
+            gap: 8px; 
+            margin-bottom: 20px; 
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+        
+        .btn-group button { 
+            padding: 8px 16px; 
+            border-radius: 8px; 
+            border: 1px solid var(--border); 
+            background: white; 
+            cursor: pointer; 
+            font-size: 0.85rem; 
+            font-weight: 600;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        
+        .btn-group button:hover { background: #f8fafc; }
+        .btn-group button.active { 
+            background: var(--primary); 
+            color: white; 
+            border-color: var(--primary); 
+        }
+        
+        /* The Table Grid */
         .weather-grid { 
             display: grid; 
-            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); 
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); 
             gap: 1px; 
             background: var(--border);
             border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
         }
         
         .day-cell { 
             background: white; 
-            padding: 10px; 
+            padding: 12px 8px; 
             display: flex; 
             flex-direction: column; 
             align-items: center; 
-            min-height: 90px;
+            justify-content: space-between;
+            min-height: 100px;
+            transition: background 0.2s;
+        }
+
+        .day-cell:hover { background: #fdfdfd; }
+        
+        .date-label { font-size: 0.7rem; color: #64748b; font-weight: 600; text-transform: uppercase; }
+        .weather-icon { font-size: 2rem; margin: 8px 0; }
+        
+        .temp-row { 
+            display: flex; 
+            justify-content: center;
+            gap: 10px; 
+            font-size: 0.95rem; 
+            width: 100%;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 5px;
         }
         
-        .date-label { font-size: 0.75rem; color: #64748b; margin-bottom: 5px; }
-        .weather-icon { font-size: 1.8rem; margin: 5px 0; }
-        .temp-row { display: flex; gap: 8px; font-size: 0.9rem; margin-top: auto; }
-        .temp-max { font-weight: bold; color: #ef4444; }
-        .temp-min { color: #3b82f6; }
+        .temp-max { font-weight: 800; color: var(--max-temp); }
+        .temp-min { font-weight: 400; color: var(--min-temp); }
 
-        .btn-group { display: flex; gap: 5px; margin-bottom: 15px; }
-        .btn-group button { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: white; cursor: pointer; font-size: 0.8rem; }
-        .btn-group button.active { background: var(--primary); color: white; border-color: var(--primary); }
-        
-        .back-btn { margin-top: 15px; display: block; text-decoration: none; color: var(--primary); font-weight: bold; font-size: 0.9rem; }
-        
-        @media (max-width: 480px) {
+        .back-btn { 
+            text-decoration: none; 
+            color: #64748b; 
+            font-size: 0.9rem; 
+            display: flex; 
+            align-items: center; 
+            gap: 5px;
+        }
+
+        @media (max-width: 500px) {
             .weather-grid { grid-template-columns: repeat(3, 1fr); }
+            .container { padding: 10px; }
         }
     </style>
 </head>
@@ -50,14 +135,15 @@
 
     <div class="container">
         <div class="header">
-            <div id="city-name" style="font-weight: bold;">📍 Determining...</div>
-            <a href="index.html" class="back-btn" style="margin:0">← Back</a>
+            <div id="city-name" class="city-badge">📍 Detecting...</div>
+            <a href="index.html" class="back-btn">← Back to Calendar</a>
         </div>
 
         <div class="btn-group">
             <button onclick="getWeather(7)" id="btn-7">7 Days</button>
-            <button onclick="getWeather(14)" id="btn-14">14 Days</button>
-            <button onclick="getWeather(30)" id="btn-30">Month</button>
+            <button onclick="getWeather(10)" id="btn-10">10 Days</button>
+            <button onclick="getWeather(16)" id="btn-16">16 Days</button>
+            <button onclick="getWeather(30)" id="btn-30">Month (30d)</button>
         </div>
 
         <div id="weather-grid" class="weather-grid">
@@ -67,74 +153,80 @@
     <script>
         let userCoords = null;
         
-        // Icon Mapping Table
+        // Comprehensive Icon Mapping
         const getIcon = (code) => {
-            if (code === undefined) return "❓";
-            if (code === 0) return "☀️"; // Clear
-            if (code <= 3) return "⛅";  // Clouds
-            if (code <= 48) return "🌫️"; // Fog
-            if (code <= 57) return "🌧️"; // Drizzle
-            if (code <= 67) return "🌦️"; // Rain
-            if (code <= 77) return "❄️"; // Snow
-            if (code <= 82) return "🌧️"; // Showers
-            if (code <= 99) return "⛈️"; // Storm
-            return "☁️";
+            if (code === 0) return "☀️"; // Clear sky
+            if (code >= 1 && code <= 3) return "⛅"; // Partly cloudy
+            if (code === 45 || code === 48) return "🌫️"; // Fog
+            if (code >= 51 && code <= 57) return "🌧️"; // Drizzle
+            if (code >= 61 && code <= 67) return "🌦️"; // Rain
+            if (code >= 71 && code <= 77) return "❄️"; // Snow
+            if (code >= 80 && code <= 82) return "🌧️"; // Rain showers
+            if (code >= 95) return "⛈️"; // Thunderstorm
+            return "☁️"; // Default cloudy
         };
 
+        // Initialize Location
         navigator.geolocation.getCurrentPosition(pos => {
             userCoords = pos.coords;
+            // Fetch city name
             fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${userCoords.latitude}&lon=${userCoords.longitude}`)
                 .then(r => r.json()).then(data => {
-                    document.getElementById('city-name').innerText = `📍 ${data.address.city || data.address.town || 'Weather'}`;
+                    const city = data.address.city || data.address.town || data.address.village || 'My Location';
+                    document.getElementById('city-name').innerText = `📍 ${city}`;
                 });
-            getWeather(30); // Default to Month view
+            getWeather(30); // Default view
+        }, err => {
+            document.getElementById('city-name').innerText = "📍 Location Disabled";
+            alert("Please enable location to see your local weather.");
         });
 
         async function getWeather(days) {
             if (!userCoords) return;
 
-            // UI Feedback
+            // Update UI Active State
             document.querySelectorAll('.btn-group button').forEach(b => b.classList.remove('active'));
             document.getElementById(`btn-${days}`).classList.add('active');
 
-            const { latitude, longitude } = userCoords;
-            let url;
-            
-            // For 30 days we use climate data, for < 16 we use standard forecast
-            if (days <= 14) {
-                url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto&forecast_days=${days}`;
-            } else {
-                const start = new Date().toISOString().split('T')[0];
-                const end = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
-                url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto&forecast_days=30`;
-            }
-
-            const res = await fetch(url);
-            const data = await res.json();
             const grid = document.getElementById('weather-grid');
-            grid.innerHTML = '';
+            grid.innerHTML = '<div style="grid-column: 1/-1; padding: 40px; text-align: center; background: white;">Loading forecast...</div>';
 
-            data.daily.time.forEach((time, i) => {
-                const dateObj = new Date(time);
-                const dayName = dateObj.toLocaleDateString('en-GB', { weekday: 'short' });
-                const dayNum = dateObj.getDate();
-                const monthName = dateObj.toLocaleDateString('en-GB', { month: 'short' });
+            const { latitude, longitude } = userCoords;
+            
+            // API Call - Open-Meteo supports up to 16 days in forecast, 
+            // and we can extend it to 30 using their forecast_days parameter
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto&forecast_days=${days}`;
+
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
                 
-                const max = Math.round(data.daily.temperature_2m_max[i]);
-                const min = Math.round(data.daily.temperature_2m_min[i]);
-                const icon = getIcon(data.daily.weathercode[i]);
+                grid.innerHTML = ''; // Clear loader
 
-                grid.innerHTML += `
-                    <div class="day-cell">
-                        <span class="date-label">${dayName}, ${dayNum} ${monthName}</span>
-                        <span class="weather-icon">${icon}</span>
-                        <div class="temp-row">
-                            <span class="temp-max">${max}°</span>
-                            <span class="temp-min">${min}°</span>
+                data.daily.time.forEach((time, i) => {
+                    const dateObj = new Date(time);
+                    const dayName = dateObj.toLocaleDateString('en-GB', { weekday: 'short' });
+                    const dayNum = dateObj.getDate();
+                    const monthName = dateObj.toLocaleDateString('en-GB', { month: 'short' });
+                    
+                    const max = Math.round(data.daily.temperature_2m_max[i]);
+                    const min = Math.round(data.daily.temperature_2m_min[i]);
+                    const icon = getIcon(data.daily.weathercode[i]);
+
+                    grid.innerHTML += `
+                        <div class="day-cell">
+                            <span class="date-label">${dayName}, ${dayNum} ${monthName}</span>
+                            <span class="weather-icon">${icon}</span>
+                            <div class="temp-row">
+                                <span class="temp-max">${max}°</span>
+                                <span class="temp-min">${min}°</span>
+                            </div>
                         </div>
-                    </div>
-                `;
-            });
+                    `;
+                });
+            } catch (error) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; padding: 20px; color: red;">Error loading data. Try again later.</div>';
+            }
         }
     </script>
 </body>
