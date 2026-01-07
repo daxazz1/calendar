@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Dashboard</title>
+    <style>
+        :root { --primary: #0ea5e9; --bg: #f1f5f9; --text: #1e293b; --border: #cbd5e1; --max-temp: #ef4444; --min-temp: #3b82f6; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
+        .container { background: white; border-radius: 12px; width: 100%; max-width: 900px; padding: 20px; box-shadow: 0 10px 15px rgba(0,0,0,0.1); position: relative; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid var(--bg); padding-bottom: 10px; flex-wrap: wrap; gap: 10px; }
+        .city-badge { font-size: 1.1rem; font-weight: 700; color: var(--primary); }
+        .search-container { position: relative; width: 100%; margin-bottom: 10px; }
+        .search-box { display: flex; gap: 5px; }
+        input { flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; outline: none; transition: 0.2s; }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2); }
+        .btn-search { background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .suggestions-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--border); border-radius: 8px; margin-top: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; display: none; max-height: 200px; overflow-y: auto; }
+        .suggestion-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #f1f5f9; }
+        .suggestion-item:hover { background: #f8fafc; color: var(--primary); }
+        .recent-searches { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; width: 100%; }
+        .recent-item { background: #e2e8f0; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; cursor: pointer; font-weight: 600; color: #475569; transition: 0.2s; }
+        .recent-item:hover { background: var(--primary); color: white; }
+        .btn-group { display: flex; gap: 8px; margin-bottom: 20px; }
+        .btn-group button { padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: white; cursor: pointer; font-size: 0.85rem; font-weight: 600; }
+        .btn-group button.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .weather-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+        .day-cell { background: white; padding: 12px 8px; display: flex; flex-direction: column; align-items: center; min-height: 100px; }
+        .date-label { font-size: 0.7rem; color: #64748b; font-weight: 600; text-transform: uppercase; text-align: center; }
+        .weather-icon { font-size: 2rem; margin: 8px 0; }
+        .temp-row { display: flex; justify-content: center; gap: 10px; font-size: 0.95rem; width: 100%; border-top: 1px solid #f1f5f9; padding-top: 5px; }
+        .temp-max { font-weight: 800; color: var(--max-temp); }
+        .temp-min { color: var(--min-temp); }
+        .back-btn { text-decoration: none; color: #64748b; font-size: 0.9rem; font-weight: bold; }
+        @media (max-width: 500px) { .weather-grid { grid-template-columns: repeat(3, 1fr); } }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <div id="city-name" class="city-badge">📍 Loading...</div>
+            <a href="index.html" class="back-btn">← Back to Calendar</a>
+        </div>
+
+        <div class="search-container">
+            <div class="search-box">
+                <input type="text" id="city-input" placeholder="Search city..." autocomplete="off">
+                <button class="btn-search" onclick="useGPS()" style="background:#64748b">📍 Me</button>
+            </div>
+            <div id="suggestions" class="suggestions-list"></div>
+        </div>
+
+        <div id="recent-searches" class="recent-searches"></div>
+
+        <div class="btn-group">
+            <button onclick="changeRange(7)" id="btn-7">7 Days</button>
+            <button onclick="changeRange(10)" id="btn-10">10 Days</button>
+            <button onclick="changeRange(16)" id="btn-16" class="active">16 Days</button>
+        </div>
+
+        <div id="weather-grid" class="weather-grid"></div>
+    </div>
+
+    <script>
+        // --- 1. ROBUST SECURITY CHECK ---
+        function performAuthCheck() {
+            let isAuthenticated = false;
+            
+            // Scan all LocalStorage for any key containing "log", "auth", or "user" set to "true"
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i).toLowerCase();
+                const val = localStorage.getItem(localStorage.key(i)).toLowerCase();
+                if ((key.includes('log') || key.includes('auth') || key.includes('user')) && 
+                    (val === 'true' || val === 'active' || val === '1')) {
+                    isAuthenticated = true;
+                    break;
+                }
+            }
+
+            // Check cookies as fallback
+            if (document.cookie.includes('isLoggedIn=true') || document.cookie.includes('loggedIn=true')) {
+                isAuthenticated = true;
+            }
+
+            if (!isAuthenticated) {
+                // Short delay to allow session data to settle before redirecting
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 200);
+                return false;
+            }
+            return true;
+        }
+
+        // --- 2. WEATHER LOGIC ---
+        let currentCoords = null;
+        let currentDays = 16;
+        let debounceTimer;
+
+        const getIcon = (code) => {
+            const icons = {
+                0: "☀️", 1: "⛅", 2: "⛅", 3: "⛅",
+                45: "🌫️", 48: "🌫️",
+                51: "🌧️", 53: "🌧️", 55: "🌧️",
+                61: "🌦️", 63: "🌦️", 65: "🌦️",
+                71: "❄️", 73: "❄️", 75: "❄️",
+                80: "🌧️", 81: "🌧️", 82: "🌧️",
+                95: "⛈️", 96: "⛈️", 99: "⛈️"
+            };
+            return icons[code] || "☁️";
+        };
+
+        const cityInput = document.getElementById('city-input');
+        const suggestionsBox = document.getElementById('suggestions');
+        const recentBox = document.getElementById('recent-searches');
+
+        cityInput.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            const query = cityInput.value.trim();
+            if (query.length < 2) { suggestionsBox.style.display = 'none'; return; }
+            debounceTimer = setTimeout(() => fetchSuggestions(query), 300);
+        });
+
+        async function fetchSuggestions(query) {
+            try {
+                const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=en&format=json`);
+                const data = await res.json();
+                if (data.results) {
+                    suggestionsBox.innerHTML = '';
+                    data.results.forEach(city => {
+                        const div = document.createElement('div');
+                        div.className = 'suggestion-item';
+                        const locationStr = `${city.name}, ${city.country_code.toUpperCase()}`;
+                        div.innerText = locationStr;
+                        div.onclick = () => selectCity({ name: locationStr, latitude: city.latitude, longitude: city.longitude });
+                        suggestionsBox.appendChild(div);
+                    });
+                    suggestionsBox.style.display = 'block';
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function selectCity(cityObj) {
+            currentCoords = { latitude: cityObj.latitude, longitude: cityObj.longitude };
+            document.getElementById('city-name').innerText = `📍 ${cityObj.name}`;
+            cityInput.value = '';
+            suggestionsBox.style.display = 'none';
+            saveToRecent(cityObj);
+            getWeather();
+        }
+
+        function saveToRecent(city) {
+            let recent = JSON.parse(localStorage.getItem('weatherHistory') || '[]');
+            recent = recent.filter(item => item.name !== city.name);
+            recent.unshift(city);
+            if (recent.length > 4) recent.pop(); // Keeps the requested 4 searched cities
+            localStorage.setItem('weatherHistory', JSON.stringify(recent));
+            renderRecent();
+        }
+
+        function renderRecent() {
+            const recent = JSON.parse(localStorage.getItem('weatherHistory') || '[]');
+            recentBox.innerHTML = recent.length ? '<span style="font-size:0.7rem; color:#64748b; margin-right:5px;">Recent:</span>' : '';
+            recent.forEach(city => {
+                const span = document.createElement('span');
+                span.className = 'recent-item';
+                span.innerText = city.name;
+                span.onclick = () => selectCity(city);
+                recentBox.appendChild(span);
+            });
+        }
+
+        function useGPS() {
+            navigator.geolocation.getCurrentPosition(pos => {
+                currentCoords = pos.coords;
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentCoords.latitude}&lon=${currentCoords.longitude}`)
+                    .then(r => r.json()).then(data => {
+                        const name = data.address.city || data.address.town || 'My Location';
+                        document.getElementById('city-name').innerText = `📍 ${name}`;
+                        getWeather();
+                    });
+            }, () => { alert("Location access denied."); });
+        }
+
+        async function getWeather() {
+            if (!currentCoords) return;
+            document.querySelectorAll('.btn-group button').forEach(b => b.classList.remove('active'));
+            document.getElementById(`btn-${currentDays}`).classList.add('active');
+            const grid = document.getElementById('weather-grid');
+            grid.innerHTML = '<div style="grid-column:1/-1; padding:40px; text-align:center;">Loading...</div>';
+
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentCoords.latitude}&longitude=${currentCoords.longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto&forecast_days=${currentDays}`;
+
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                grid.innerHTML = ''; 
+                data.daily.time.forEach((time, i) => {
+                    const dateObj = new Date(time);
+                    const dayLabel = dateObj.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+                    grid.innerHTML += `
+                        <div class="day-cell">
+                            <span class="date-label">${dayLabel}</span>
+                            <span class="weather-icon">${getIcon(data.daily.weathercode[i])}</span>
+                            <div class="temp-row">
+                                <span class="temp-max">${Math.round(data.daily.temperature_2m_max[i])}°</span>
+                                <span class="temp-min">${Math.round(data.daily.temperature_2m_min[i])}°</span>
+                            </div>
+                        </div>`;
+                });
+            } catch (e) { grid.innerHTML = '<div style="grid-column:1/-1; padding:20px;">Weather Error.</div>'; }
+        }
+
+        function changeRange(days) { currentDays = days; getWeather(); }
+
+        document.addEventListener('click', (e) => {
+            if (!cityInput.contains(e.target) && !suggestionsBox.contains(e.target)) suggestionsBox.style.display = 'none';
+        });
+
+        // Initialize
+        if (performAuthCheck()) {
+            renderRecent();
+            const lastSearch = JSON.parse(localStorage.getItem('weatherHistory') || '[]');
+            if (lastSearch.length > 0) {
+                selectCity(lastSearch[0]);
+            } else {
+                useGPS();
+            }
+        }
+    </script>
+</body>
+</html>
