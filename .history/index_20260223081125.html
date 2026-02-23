@@ -24,8 +24,6 @@
         .calendar-wrapper { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
         
-        .count-badge { background: var(--primary); color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; margin-left: 10px; font-weight: bold; }
-        
         .months-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
         .month { border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: white; }
         .month-name { text-align: center; font-weight: bold; margin-bottom: 10px; }
@@ -40,19 +38,16 @@
         .day.search-match { background: var(--search-highlight); border: 2px solid #eab308; }
         .day.has-note::after { content: ""; position: absolute; top: 2px; right: 2px; width: 0; height: 0; border-style: solid; border-width: 0 6px 6px 0; border-color: transparent var(--note) transparent transparent; }
 
-
         .day.empty { pointer-events: none; opacity: 0; }
         button { cursor: pointer; background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; transition: opacity 0.2s; }
         .btn-delete-cal { background: var(--delete); padding: 5px 10px; font-size: 0.75rem; }
         .btn-logout { background: transparent; color: #64748b; font-size: 0.8rem; width: auto; font-weight: normal; padding: 5px; }
-
 
         #note-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; padding:20px; backdrop-filter: blur(2px); }
         .modal-content { background:white; padding:20px; border-radius:12px; width:100%; max-width:400px; box-shadow:0 10px 25px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
-
 
     <div id="login-screen">
         <div class="login-box">
@@ -62,7 +57,6 @@
             <button onclick="login()" style="width:100%">Login</button>
         </div>
     </div>
-
 
     <div id="main-content">
         <header>
@@ -75,7 +69,6 @@
                     </select>
                     <a href="weather.html" style="text-decoration:none; background:#0ea5e9; color:white; padding:5px 10px; border-radius:6px; font-size:0.8rem; font-weight:bold;">☀️ Weather</a>
                 </div>
-
 
                 <div style="display:flex; align-items:center;">
                     <span id="sync-status" class="status-pill">Synced</span>
@@ -91,7 +84,6 @@
         <div id="app"></div>
     </div>
 
-
     <div id="note-modal" onclick="if(event.target === this) closeModal()">
         <div class="modal-content">
             <h4 id="modal-date-label" style="margin-top:0">Note</h4>
@@ -106,7 +98,6 @@
         </div>
     </div>
 
-
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyCcTsr0uCCbOYbudgq-MHdJKhgYdEz3Fec",
@@ -114,7 +105,6 @@
             databaseURL: "https://calendar-3ce3a-default-rtdb.europe-west1.firebasedatabase.app",
             projectId: "calendar-3ce3a"
         };
-
 
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
@@ -124,18 +114,15 @@
         let currentEditingData = null;
         let clickTimer = null;
 
-
         window.login = async () => {
             try { await auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value); } 
             catch (e) { alert(e.message); }
         };
 
-
         window.logout = () => auth.signOut().then(() => {
             localStorage.removeItem('isLoggedIn');
             location.reload();
         });
-
 
         auth.onAuthStateChanged(user => {
             if (user) {
@@ -147,7 +134,6 @@
                 localStorage.removeItem('isLoggedIn');
             }
         });
-
 
         async function loadData() {
             const statusEl = document.getElementById('sync-status');
@@ -161,7 +147,6 @@
             if(statusEl) statusEl.innerText = "Synced";
         }
 
-
         async function saveData() {
             if (!auth.currentUser) return;
             const token = await auth.currentUser.getIdToken();
@@ -170,12 +155,10 @@
             });
         }
 
-
         window.changeYear = () => {
             currentYear = parseInt(document.getElementById('year-select').value);
             loadData();
         };
-
 
         window.deleteCalendar = (id) => {
             if(confirm("Delete this entire calendar and all its data?")) {
@@ -184,7 +167,6 @@
             }
         };
 
-
         window.addCalendar = () => {
             const name = prompt("Enter Calendar Name:");
             if (name) { 
@@ -192,7 +174,6 @@
                 render(); saveData(); 
             }
         };
-
 
         window.handleDayClick = (calId, m, d) => {
             if (clickTimer) {
@@ -214,11 +195,9 @@
             }
         };
 
-
         window.openNoteModal = (calId, m, d) => {
             const cal = calendars.find(c => c.id === calId);
             if (!cal) return;
-
 
             currentEditingData = { calId, m, d };
             const key = `${m}-${d}`;
@@ -228,14 +207,12 @@
             const input = document.getElementById('note-input');
             const delBtn = document.getElementById('delete-note-btn');
 
-
             if (label) label.innerText = `${currentYear} - ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m]} ${d}`;
             if (input) input.value = existing;
             
             document.getElementById('note-modal').style.display = 'flex';
             if (delBtn) delBtn.style.display = existing ? 'block' : 'none';
         };
-
 
         window.saveNoteFromModal = () => {
             if (!currentEditingData) return;
@@ -250,7 +227,6 @@
             }
         };
 
-
         window.deleteNoteFromModal = () => {
             if (!currentEditingData) return;
             const { calId, m, d } = currentEditingData;
@@ -261,12 +237,10 @@
             }
         };
 
-
         window.closeModal = () => {
             document.getElementById('note-modal').style.display = 'none';
             currentEditingData = null;
         };
-
 
         function getWk(date) {
             let t = new Date(date.getTime()); t.setHours(0,0,0,0);
@@ -274,7 +248,6 @@
             let w1 = new Date(t.getFullYear(), 0, 4);
             return 1 + Math.round(((t - w1)/86400000 - 3 + (w1.getDay() + 6)%7)/7);
         }
-
 
         function render() {
             const app = document.getElementById('app');
@@ -285,14 +258,8 @@
             calendars.forEach(cal => {
                 let wrap = document.createElement('div');
                 wrap.className = 'calendar-wrapper';
-                
-                const totalMarks = (cal.marks || []).length;
-                
                 let html = `<div class="cal-header">
-                    <div style="display: flex; align-items: center;">
-                        <strong>${cal.name}</strong>
-                        <span class="count-badge">${totalMarks} X's</span>
-                    </div>
+                    <strong>${cal.name}</strong>
                     <button class="btn-delete-cal" onclick="deleteCalendar(${cal.id})">Delete Calendar</button>
                 </div><div class="months-grid">`;
                 
